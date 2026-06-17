@@ -46,6 +46,27 @@ function readViewFile(viewName: LegacyViewName): string {
   return fs.readFileSync(filePath, 'utf-8');
 }
 
+/** En Next el HTML legacy va dentro de un div; conservamos class/style del <body>. */
+function wrapWithBodyAttributes(
+  bodyOpenTag: string,
+  bodyInner: string,
+): string {
+  const classMatch = bodyOpenTag.match(/\bclass=["']([^"']*)["']/i);
+  const styleMatch = bodyOpenTag.match(/\bstyle=["']([^"']*)["']/i);
+  const className = classMatch?.[1]?.trim();
+  const style = styleMatch?.[1]?.trim();
+
+  if (!className && !style) {
+    return bodyInner;
+  }
+
+  const attrs: string[] = [];
+  if (className) attrs.push(`class="${className}"`);
+  if (style) attrs.push(`style="${style}"`);
+
+  return `<div ${attrs.join(' ')}>${bodyInner}</div>`;
+}
+
 /** Extrae título, estilos/scripts del head y contenido del body de una vista HTML legacy. */
 export function loadLegacyView(viewName: LegacyViewName): {
   title: string;
@@ -76,11 +97,14 @@ export function loadLegacyView(viewName: LegacyViewName): {
     .map((m) => m[0])
     .join('\n');
 
+  const bodyOpenMatch = content.match(/<body([^>]*)>/i);
+  const bodyOpenTag = bodyOpenMatch?.[1] ?? '';
   const bodyMatch = content.match(/<body[^>]*>([\s\S]*)<\/body>/i);
   const bodyInner = bodyMatch?.[1]?.trim() ?? '';
+  const wrappedBody = wrapWithBodyAttributes(bodyOpenTag, bodyInner);
 
   const bodyHtml = stripGlobalScripts(
-    [styleTags, extraHeadLinks, externalScripts, bodyInner]
+    [styleTags, extraHeadLinks, externalScripts, wrappedBody]
       .filter(Boolean)
       .join('\n'),
   );

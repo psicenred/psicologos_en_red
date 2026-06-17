@@ -2,6 +2,29 @@ import { NextResponse } from 'next/server';
 import { isDatabaseConfigured, query } from '@/lib/db';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
+function parseDatabaseUrlInfo(): {
+  user: string;
+  host: string;
+  port: string;
+} | null {
+  const raw =
+    process.env.DATABASE_URL?.trim() ||
+    process.env.DATABASE_PUBLIC_URL?.trim() ||
+    process.env.DATABASE_PRIVATE_URL?.trim() ||
+    process.env.POSTGRES_URL?.trim();
+  if (!raw) return null;
+  try {
+    const parsed = new URL(raw.replace(/^postgresql:/, 'https:'));
+    return {
+      user: parsed.username,
+      host: parsed.hostname,
+      port: parsed.port || '5432',
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function GET() {
   const sessionSecret = Boolean(process.env.SESSION_SECRET?.trim());
   let databaseQuery = false;
@@ -21,11 +44,15 @@ export async function GET() {
     }
   }
 
+  const dbInfo = parseDatabaseUrlInfo();
   const ok = databaseQuery && sessionSecret;
   const body = {
     status: ok ? 'ok' : 'degraded',
     checks: {
       databaseUrl: isDatabaseConfigured(),
+      databaseUser: dbInfo?.user ?? null,
+      databaseHost: dbInfo?.host ?? null,
+      databasePort: dbInfo?.port ?? null,
       databaseQuery,
       psicologosCount,
       databaseError,

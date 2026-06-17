@@ -8,6 +8,7 @@ node_modules/
 uploads/
 .vercel
 tsconfig.tsbuildinfo
+railway_export*.sql
 
 # Claves privadas — nunca subir
 *.pk
