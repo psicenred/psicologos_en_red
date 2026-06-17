@@ -1,19 +1,36 @@
 import { NextResponse } from 'next/server';
-import { isDatabaseConfigured } from '@/lib/db';
+import { isDatabaseConfigured, query } from '@/lib/db';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 export async function GET() {
-  const db = isDatabaseConfigured();
-  const storage = isSupabaseConfigured();
   const sessionSecret = Boolean(process.env.SESSION_SECRET?.trim());
+  let databaseQuery = false;
+  let psicologosCount: number | null = null;
+  let databaseError: string | null = null;
 
-  const ok = db && sessionSecret;
+  if (isDatabaseConfigured()) {
+    try {
+      const result = await query<{ n: number }>(
+        'SELECT COUNT(*)::int AS n FROM psicologos',
+      );
+      psicologosCount = result.rows[0]?.n ?? 0;
+      databaseQuery = true;
+    } catch (error) {
+      const err = error as { message?: string; code?: string };
+      databaseError = [err.code, err.message].filter(Boolean).join(': ');
+    }
+  }
+
+  const ok = databaseQuery && sessionSecret;
   const body = {
     status: ok ? 'ok' : 'degraded',
     checks: {
-      database: db,
+      databaseUrl: isDatabaseConfigured(),
+      databaseQuery,
+      psicologosCount,
+      databaseError,
       sessionSecret,
-      supabaseStorage: storage,
+      supabaseStorage: isSupabaseConfigured(),
       stripe: Boolean(process.env.STRIPE_SECRET_KEY?.trim()),
       cron: Boolean(process.env.CRON_SECRET?.trim()),
     },

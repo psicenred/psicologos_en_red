@@ -18,15 +18,32 @@ function getDatabaseUrl(): string {
   return url;
 }
 
+/** Supabase pooler (6543) requiere pgbouncer=true para serverless/Vercel. */
+function normalizeConnectionString(connectionString: string): string {
+  const isPooler =
+    connectionString.includes('pooler.supabase.com') ||
+    connectionString.includes(':6543/');
+
+  if (!isPooler || connectionString.includes('pgbouncer=true')) {
+    return connectionString;
+  }
+
+  const sep = connectionString.includes('?') ? '&' : '?';
+  return `${connectionString}${sep}pgbouncer=true`;
+}
+
 /** Pool Postgres compartido (Supabase o Railway). */
 export function getPool(): Pool {
   if (!pool) {
-    const connectionString = getDatabaseUrl();
+    const connectionString = normalizeConnectionString(getDatabaseUrl());
     const isLocal = /localhost|127\.0\.0\.1/.test(connectionString);
 
     pool = new Pool({
       connectionString,
       ssl: isLocal ? false : { rejectUnauthorized: false },
+      max: 5,
+      idleTimeoutMillis: 20_000,
+      connectionTimeoutMillis: 15_000,
     });
   }
 
