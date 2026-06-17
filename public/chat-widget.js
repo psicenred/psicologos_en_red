@@ -1,6 +1,9 @@
 (function () {
     'use strict';
 
+    if (window.__rediChatInitialized) return;
+    window.__rediChatInitialized = true;
+
     var apiUrl = '/api/chat';
     var history = [];
     var hasOpenedBefore = false;
@@ -230,7 +233,7 @@
             addMessage(welcomeText, 'bot');
         }
     }
-    var autoOpenedKey = 'rediAutoOpened';
+    var autoOpenedKey = 'rediAutoOpened:' + (window.location.pathname || '/');
     if (!sessionStorage.getItem(autoOpenedKey)) {
         setTimeout(function () {
             if (sessionStorage.getItem(autoOpenedKey)) return;
