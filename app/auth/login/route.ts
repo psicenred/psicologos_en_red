@@ -1,12 +1,12 @@
-import { NextResponse } from 'next/server';
 import {
   authHtmlResponse,
   databaseUnavailableResponse,
-  loginUsuario,
   parseFormBody,
   redirectAfterLogin,
 } from '@/lib/auth/api';
 import { ensureDb, loginWithCredentials } from '@/lib/auth/service';
+import { getSessionOptions, type SessionData } from '@/lib/session';
+import { getIronSession } from 'iron-session';
 
 export async function POST(request: Request) {
   if (!ensureDb()) return databaseUnavailableResponse();
@@ -32,8 +32,15 @@ export async function POST(request: Request) {
       return authHtmlResponse('Error al iniciar sesión.', 500);
     }
 
-    await loginUsuario(result.usuario);
-    return redirectAfterLogin(result.rol, request.url);
+    const response = redirectAfterLogin(result.rol, request.url);
+    const session = await getIronSession<SessionData>(
+      request,
+      response,
+      getSessionOptions(),
+    );
+    session.usuario = result.usuario;
+    await session.save();
+    return response;
   } catch (error) {
     console.error('POST /auth/login:', error);
     return authHtmlResponse('Error en el servidor', 500);

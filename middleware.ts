@@ -22,7 +22,9 @@ export async function middleware(request: NextRequest) {
   if (!session.usuario) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('next', pathname);
-    return NextResponse.redirect(loginUrl);
+    // 303 si llegó un POST (p. ej. redirect 307 tras login); 307 basta para GET.
+    const status = request.method === 'POST' ? 303 : 307;
+    return NextResponse.redirect(loginUrl, status);
   }
 
   const rol = normalizeRol(session.usuario.rol);

@@ -16,8 +16,13 @@ export function unauthorizedJson() {
   return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 }
 
+/** Tras un POST, usar 303 para que el navegador haga GET (307 conservaría POST). */
+export function redirectGet(url: URL) {
+  return NextResponse.redirect(url, 303);
+}
+
 export function redirectToLogin(requestUrl: string) {
-  return NextResponse.redirect(new URL('/login', requestUrl));
+  return redirectGet(new URL('/login', requestUrl));
 }
 
 export async function requireAuthUsuario(): Promise<
@@ -41,11 +46,11 @@ export function normalizeRol(rol: string | null | undefined): string {
 }
 
 export function redirectAfterLogin(rol: string, base: string) {
-  if (rol === 'admin') return NextResponse.redirect(new URL('/panel-admin', base));
+  if (rol === 'admin') return redirectGet(new URL('/panel-admin', base));
   if (rol === 'psicologo') {
-    return NextResponse.redirect(new URL('/panel-doctor', base));
+    return redirectGet(new URL('/panel-doctor', base));
   }
-  return NextResponse.redirect(new URL('/perfil', base));
+  return redirectGet(new URL('/perfil', base));
 }
 
 /** HTML inline (paridad con legacy) para respuestas de verificación / errores auth. */
