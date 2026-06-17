@@ -1,0 +1,16 @@
+node_modules/
+.next/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+uploads/
+.vercel
+tsconfig.tsbuildinfo
+
+# Claves privadas — nunca subir
+*.pk
+*.pem
+*private*key*
+Jitsi Key*
