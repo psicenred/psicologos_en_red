@@ -28,14 +28,21 @@ interface LegacyPageClientProps {
  */
 export default function LegacyPageClient({ html }: LegacyPageClientProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const scriptsForHtml = useRef<string | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
-
-    container.innerHTML = html;
+    if (!container || scriptsForHtml.current === html) return;
+    scriptsForHtml.current = html;
     activateScripts(container);
   }, [html]);
 
-  return <div ref={containerRef} suppressHydrationWarning />;
+  return (
+    <div
+      ref={containerRef}
+      className="legacy-page-root"
+      suppressHydrationWarning
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
 }

@@ -10,3 +10,8 @@ body {
   color: #1a1a2e;
   background: #fafafa;
 }
+
+.legacy-page-root {
+  display: block;
+  min-height: 100vh;
+}

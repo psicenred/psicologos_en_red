@@ -1973,6 +1973,7 @@ summary::after {
 .perfil-body {
     margin: 0;
     overflow: hidden;
+    min-height: 100vh;
     background: var(--fondo-hueso); /* Fondo crema suave */
 }
 

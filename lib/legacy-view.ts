@@ -67,6 +67,17 @@ function wrapWithBodyAttributes(
   return `<div ${attrs.join(' ')}>${bodyInner}</div>`;
 }
 
+/** Extrae el interior de <body>; tolera HTML sin </body> (p. ej. perfil.html). */
+function extractBodyInner(content: string): string {
+  const closed = content.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  if (closed?.[1]) return closed[1].trim();
+
+  const open = content.match(/<body[^>]*>([\s\S]*)/i);
+  if (!open?.[1]) return '';
+
+  return open[1].replace(/<\/html>\s*$/i, '').trim();
+}
+
 /** Extrae título, estilos/scripts del head y contenido del body de una vista HTML legacy. */
 export function loadLegacyView(viewName: LegacyViewName): {
   title: string;
@@ -99,8 +110,7 @@ export function loadLegacyView(viewName: LegacyViewName): {
 
   const bodyOpenMatch = content.match(/<body([^>]*)>/i);
   const bodyOpenTag = bodyOpenMatch?.[1] ?? '';
-  const bodyMatch = content.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-  const bodyInner = bodyMatch?.[1]?.trim() ?? '';
+  const bodyInner = extractBodyInner(content);
   const wrappedBody = wrapWithBodyAttributes(bodyOpenTag, bodyInner);
 
   const bodyHtml = stripGlobalScripts(
