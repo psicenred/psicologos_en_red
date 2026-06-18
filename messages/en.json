@@ -9,6 +9,10 @@
     "academy": "Academy",
     "blog": "Blog",
     "myProfile": "My Profile",
+    "userProfile": "User profile",
+    "userProfileOf": "{name}'s profile",
+    "doctorPanel": "Specialist panel",
+    "adminPanel": "Admin panel",
     "siteOf": "{name}'s site",
     "menu": "Menu",
     "language": "Language"

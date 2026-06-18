@@ -431,12 +431,21 @@ export function DoctorVideoSection({
 
 export function DoctorChatSection({
   contactos,
+  contactosLoading,
+  contactosError,
 }: {
   contactos: { id: number; nombre: string }[];
+  contactosLoading?: boolean;
+  contactosError?: string | null;
 }) {
   return (
     <div className="seccion-panel" id="seccion-chat">
-      <PrivateChat contactos={contactos} variant="legacy-doctor" />
+      <PrivateChat
+        contactos={contactos}
+        contactosLoading={contactosLoading}
+        contactosError={contactosError}
+        variant="legacy-doctor"
+      />
     </div>
   );
 }

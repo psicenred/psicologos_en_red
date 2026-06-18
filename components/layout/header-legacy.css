@@ -120,29 +120,11 @@ body.pwa-standalone .nav-hide-in-pwa {
   display: none !important;
 }
 
-.header-lang-flags {
+.nav-lang-label {
   display: none;
 }
 
-@media (max-width: 768px) {
-  .header-lang-flags {
-    display: flex;
-    align-items: center;
-    margin-left: auto;
-    margin-right: 0.75rem;
-    z-index: 1002;
-  }
-
-  .main-nav .nav-lang-item {
-    display: none;
-  }
-}
-
 @media (min-width: 769px) {
-  .header-lang-flags {
-    display: none;
-  }
-
   .main-nav .nav-lang-item {
     display: flex;
     align-items: center;
@@ -233,8 +215,18 @@ body.pwa-standalone .nav-hide-in-pwa {
   }
 
   .nav-lang-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
     padding: 14px 0;
-    justify-content: flex-start;
+  }
+
+  .nav-lang-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--texto-oscuro);
   }
 
   .main-header .nav-toggle:checked ~ .nav-toggle-label {

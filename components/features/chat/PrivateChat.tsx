@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { fetchApiList, fetchJson, networkErrorMessage } from '@/lib/fetch-api';
 
 type Contacto = { id: number; nombre: string };
 
@@ -18,25 +19,35 @@ type Mensaje = {
   fecha_envio?: string;
 };
 
-async function fetchContactos(): Promise<Contacto[]> {
-  const res = await fetch('/api/mis-psicologos-contacto');
-  if (!res.ok) return [];
-  return res.json();
+type MensajesResponse = {
+  mensajes?: Mensaje[];
+  miId?: number;
+};
+
+function mapContacto(raw: Contacto & { usuario_id?: number }): Contacto {
+  const id = Number(raw.usuario_id ?? raw.id);
+  return { id, nombre: raw.nombre };
 }
 
 async function fetchUnreadByContact(): Promise<Record<string, number>> {
-  const res = await fetch('/api/mensajes-no-leidos-por-contacto');
-  if (!res.ok) return {};
-  return res.json();
+  const { data, error } = await fetchJson<Record<string, number>>(
+    '/api/mensajes-no-leidos-por-contacto',
+  );
+  if (error) return {};
+  return data ?? {};
 }
 
 export function PrivateChat({
   contactos: contactosProp,
   contactosEndpoint,
+  contactosLoading = false,
+  contactosError = null,
   variant = 'default',
 }: {
   contactos?: Contacto[];
   contactosEndpoint?: string;
+  contactosLoading?: boolean;
+  contactosError?: string | null;
   variant?: 'default' | 'legacy' | 'legacy-doctor';
 }) {
   const queryClient = useQueryClient();
@@ -45,27 +56,35 @@ export function PrivateChat({
   const [miId, setMiId] = useState<number | null>(null);
   const [nuevoMsg, setNuevoMsg] = useState('');
   const [sending, setSending] = useState(false);
+  const [msgError, setMsgError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const { data: fetchedContactos = [] } = useQuery({
+  const shouldFetchContactos = contactosProp == null;
+
+  const {
+    data: fetchedContactos = [],
+    isLoading: loadingContactos,
+    isError: contactosFetchError,
+    error: contactosFetchErr,
+  } = useQuery({
     queryKey: ['chat-contactos', contactosEndpoint],
     queryFn: async () => {
-      if (contactosProp) return contactosProp;
-      const res = await fetch(contactosEndpoint || '/api/mis-psicologos-contacto');
-      if (!res.ok) return [];
-      return res.json() as Promise<Contacto[]>;
+      const rows = await fetchApiList<Contacto & { usuario_id?: number }>(
+        contactosEndpoint || '/api/mis-psicologos-contacto',
+      );
+      return rows.map(mapContacto).filter((c) => Number.isFinite(c.id) && c.id > 0);
     },
-    enabled: !contactosProp,
-    initialData: contactosProp,
+    enabled: shouldFetchContactos,
   });
 
-  const contactos = (contactosProp || fetchedContactos).map((c) => {
-    const raw = c as Contacto & { usuario_id?: number };
-    return {
-      id: raw.usuario_id ?? raw.id,
-      nombre: raw.nombre,
-    };
-  });
+  const contactos = (contactosProp ?? fetchedContactos).filter(
+    (c) => Number.isFinite(c.id) && c.id > 0,
+  );
+
+  const contactosStatusError =
+    contactosError ||
+    (contactosFetchError ? networkErrorMessage(String(contactosFetchErr)) : null);
+  const showContactosLoading = contactosLoading || (shouldFetchContactos && loadingContactos);
 
   const { data: unreadMap = {} } = useQuery({
     queryKey: ['mensajes-no-leidos-por-contacto'],
@@ -73,15 +92,21 @@ export function PrivateChat({
     refetchInterval: 30_000,
   });
 
-  const loadMensajes = useCallback(async (destId: number) => {
-    const res = await fetch(`/api/mensajes/${destId}`);
-    const data = await res.json();
-    if (data.mensajes) {
-      setMensajes(data.mensajes);
-      setMiId(data.miId ?? null);
-    }
-    queryClient.invalidateQueries({ queryKey: ['mensajes-no-leidos-por-contacto'] });
-  }, [queryClient]);
+  const loadMensajes = useCallback(
+    async (destId: number) => {
+      setMsgError(null);
+      const { data, error } = await fetchJson<MensajesResponse>(`/api/mensajes/${destId}`);
+      if (error) {
+        setMsgError(networkErrorMessage(error));
+        setMensajes([]);
+        return;
+      }
+      setMensajes(data?.mensajes ?? []);
+      setMiId(data?.miId ?? null);
+      queryClient.invalidateQueries({ queryKey: ['mensajes-no-leidos-por-contacto'] });
+    },
+    [queryClient],
+  );
 
   useEffect(() => {
     if (chatId) loadMensajes(chatId);
@@ -90,12 +115,17 @@ export function PrivateChat({
   async function enviarTexto() {
     if (!chatId || !nuevoMsg.trim()) return;
     setSending(true);
+    setMsgError(null);
     try {
-      await fetch('/api/enviar-mensaje', {
+      const { error } = await fetchJson('/api/enviar-mensaje', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ destinatarioId: chatId, contenido: nuevoMsg }),
       });
+      if (error) {
+        setMsgError(networkErrorMessage(error));
+        return;
+      }
       setNuevoMsg('');
       await loadMensajes(chatId);
     } finally {
@@ -109,12 +139,65 @@ export function PrivateChat({
     form.append('archivo', file);
     form.append('destinatarioId', String(chatId));
     setSending(true);
+    setMsgError(null);
     try {
-      await fetch('/api/chat/adjunto', { method: 'POST', body: form });
+      const { error } = await fetchJson('/api/chat/adjunto', {
+        method: 'POST',
+        body: form,
+      });
+      if (error) {
+        setMsgError(networkErrorMessage(error));
+        return;
+      }
       await loadMensajes(chatId);
     } finally {
       setSending(false);
     }
+  }
+
+  function renderContactosEmpty() {
+    if (showContactosLoading) {
+      return <p style={{ fontSize: '0.8rem', color: '#888', padding: 10 }}>Cargando contactos…</p>;
+    }
+    if (contactosStatusError) {
+      return (
+        <p style={{ fontSize: '0.8rem', color: '#c0392b', padding: 10 }}>{contactosStatusError}</p>
+      );
+    }
+    return (
+      <p style={{ fontSize: '0.8rem', color: '#888', padding: 10 }}>Sin contactos aún.</p>
+    );
+  }
+
+  function renderMensajes() {
+    if (!chatId) {
+      return <p className="chat-welcome-msg">Bienvenido a tu chat privado.</p>;
+    }
+    if (msgError) {
+      return <p style={{ color: '#c0392b', padding: 12 }}>{msgError}</p>;
+    }
+    if (mensajes.length === 0) {
+      return <p className="chat-welcome-msg">No hay mensajes todavía. Escribe el primero.</p>;
+    }
+    return mensajes.map((m) => {
+      const esMio = miId != null && m.remitente_id === miId;
+      return (
+        <div key={m.id} className={`msg ${esMio ? 'enviado' : 'recibido'}`}>
+          {m.ruta_adjunto ? (
+            <a
+              href={`/api/chat/archivo/${m.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="msg-adjunto-pdf"
+            >
+              📎 {m.nombre_adjunto || 'PDF adjunto'}
+            </a>
+          ) : (
+            m.contenido
+          )}
+        </div>
+      );
+    });
   }
 
   if (variant === 'legacy-doctor') {
@@ -124,7 +207,7 @@ export function PrivateChat({
         <aside className="chat-sidebar">
           <h3>Mis Pacientes</h3>
           {contactos.length === 0 ? (
-            <p style={{ fontSize: '0.8rem', color: '#888', padding: 10 }}>Sin contactos aún.</p>
+            renderContactosEmpty()
           ) : (
             contactos.map((c) => {
               const unread = unreadMap[String(c.id)] || 0;
@@ -156,31 +239,7 @@ export function PrivateChat({
             <h4 style={{ margin: 0 }}>{activo?.nombre || 'Selecciona un paciente'}</h4>
           </div>
           <div className="chat-messages-container">
-            <div className="chat-messages-inner">
-              {!chatId ? (
-                <p className="chat-welcome-msg">Bienvenido a tu chat privado.</p>
-              ) : (
-                mensajes.map((m) => {
-                  const esMio = miId != null && m.remitente_id === miId;
-                  return (
-                    <div key={m.id} className={`msg ${esMio ? 'enviado' : 'recibido'}`}>
-                      {m.ruta_adjunto ? (
-                        <a
-                          href={`/api/chat/archivo/${m.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="msg-adjunto-pdf"
-                        >
-                          📎 {m.nombre_adjunto || 'PDF adjunto'}
-                        </a>
-                      ) : (
-                        m.contenido
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
+            <div className="chat-messages-inner">{renderMensajes()}</div>
           </div>
           <div className="chat-input-area">
             <input
@@ -231,7 +290,7 @@ export function PrivateChat({
         <aside className="chat-sidebar">
           <h3>Mis Especialistas</h3>
           {contactos.length === 0 ? (
-            <p style={{ fontSize: '0.8rem', color: '#888', padding: 10 }}>Sin contactos aún.</p>
+            renderContactosEmpty()
           ) : (
             contactos.map((c) => {
               const unread = unreadMap[String(c.id)] || 0;
@@ -261,31 +320,7 @@ export function PrivateChat({
             </h4>
           </div>
           <div id="chat-messages" className="chat-messages-container">
-            <div className="chat-messages-inner">
-              {!chatId ? (
-                <p className="chat-welcome-msg">Bienvenido a tu chat privado.</p>
-              ) : (
-                mensajes.map((m) => {
-                  const esMio = miId != null && m.remitente_id === miId;
-                  return (
-                    <div key={m.id} className={`msg ${esMio ? 'enviado' : 'recibido'}`}>
-                      {m.ruta_adjunto ? (
-                        <a
-                          href={`/api/chat/archivo/${m.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="msg-adjunto-pdf"
-                        >
-                          📎 {m.nombre_adjunto || 'PDF adjunto'}
-                        </a>
-                      ) : (
-                        m.contenido
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
+            <div className="chat-messages-inner">{renderMensajes()}</div>
           </div>
           <div className="chat-input-area">
             <input
@@ -342,7 +377,7 @@ export function PrivateChat({
         </CardHeader>
         <CardContent className="space-y-2">
           {contactos.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Sin contactos aún.</p>
+            renderContactosEmpty()
           ) : (
             contactos.map((c) => {
               const unread = unreadMap[String(c.id)] || 0;
@@ -371,30 +406,34 @@ export function PrivateChat({
           ) : (
             <>
               <div className="flex-1 space-y-2 overflow-y-auto">
-                {mensajes.map((m) => {
-                  const esMio = miId != null && m.remitente_id === miId;
-                  return (
-                    <div
-                      key={m.id}
-                      className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
-                        esMio ? 'ml-auto bg-primary text-white' : 'bg-muted'
-                      }`}
-                    >
-                      {m.ruta_adjunto ? (
-                        <a
-                          href={`/api/chat/archivo/${m.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="underline"
-                        >
-                          📎 {m.nombre_adjunto || 'PDF adjunto'}
-                        </a>
-                      ) : (
-                        m.contenido
-                      )}
-                    </div>
-                  );
-                })}
+                {msgError ? (
+                  <p className="text-sm text-destructive">{msgError}</p>
+                ) : (
+                  mensajes.map((m) => {
+                    const esMio = miId != null && m.remitente_id === miId;
+                    return (
+                      <div
+                        key={m.id}
+                        className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                          esMio ? 'ml-auto bg-primary text-white' : 'bg-muted'
+                        }`}
+                      >
+                        {m.ruta_adjunto ? (
+                          <a
+                            href={`/api/chat/archivo/${m.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline"
+                          >
+                            📎 {m.nombre_adjunto || 'PDF adjunto'}
+                          </a>
+                        ) : (
+                          m.contenido
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </div>
               <div className="mt-2 flex gap-2">
                 <input

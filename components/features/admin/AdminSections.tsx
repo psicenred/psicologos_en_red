@@ -10,6 +10,7 @@ import {
   formatFecha,
   formatHora,
 } from '@/components/features/admin/admin-helpers';
+import { fetchApiList, apiErrorMessage } from '@/lib/fetch-api';
 
 type StatsPeriod = {
   pendiente?: number;
@@ -67,6 +68,10 @@ function ResumenCitasTable({
       </td>
     </tr>
   );
+}
+
+async function fetchAdminList(url: string) {
+  return fetchApiList<Record<string, unknown>>(url);
 }
 
 export function AdminDashboardSection() {
@@ -223,10 +228,7 @@ export function AdminCitasSection() {
 
   const { data: psicologos = [] } = useQuery({
     queryKey: ['admin-psicologos'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/psicologos');
-      return res.ok ? res.json() : [];
-    },
+    queryFn: () => fetchAdminList('/api/admin/psicologos'),
   });
 
   const [fechaDesde, setFechaDesde] = useState('');
@@ -367,12 +369,14 @@ export function AdminPsicologosSection() {
   const qc = useQueryClient();
   const [busqueda, setBusqueda] = useState('');
 
-  const { data: psicologos = [] } = useQuery({
+  const {
+    data: psicologos = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ['admin-psicologos'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/psicologos');
-      return res.ok ? res.json() : [];
-    },
+    queryFn: () => fetchAdminList('/api/admin/psicologos'),
   });
 
   const filtrados = useMemo(() => {
@@ -421,6 +425,11 @@ export function AdminPsicologosSection() {
             />
           </div>
         </div>
+        {isLoading ? (
+          <p style={{ color: '#888' }}>Cargando psicólogos…</p>
+        ) : isError ? (
+          <p style={{ color: '#c0392b' }}>{apiErrorMessage(error)}</p>
+        ) : null}
         <table>
           <thead>
             <tr>
@@ -475,7 +484,7 @@ export function AdminPsicologosSection() {
                 <td>{String(p.opiniones_negativas ?? 0)}</td>
               </tr>
             ))}
-            {filtrados.length === 0 ? (
+            {filtrados.length === 0 && !isLoading && !isError ? (
               <tr>
                 <td colSpan={10} style={{ textAlign: 'center' }}>
                   Sin psicólogos
@@ -492,12 +501,14 @@ export function AdminPsicologosSection() {
 export function AdminPacientesSection() {
   const [busqueda, setBusqueda] = useState('');
 
-  const { data: pacientes = [] } = useQuery({
+  const {
+    data: pacientes = [],
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ['admin-pacientes'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/pacientes');
-      return res.ok ? res.json() : [];
-    },
+    queryFn: () => fetchAdminList('/api/admin/pacientes'),
   });
 
   const filtrados = useMemo(() => {
@@ -525,6 +536,11 @@ export function AdminPacientesSection() {
             />
           </div>
         </div>
+        {isLoading ? (
+          <p style={{ color: '#888' }}>Cargando pacientes…</p>
+        ) : isError ? (
+          <p style={{ color: '#c0392b' }}>{apiErrorMessage(error)}</p>
+        ) : null}
         <table>
           <thead>
             <tr>
@@ -560,7 +576,7 @@ export function AdminPacientesSection() {
                 <td>{p.acepto_publicidad ? '✅' : '❌'}</td>
               </tr>
             ))}
-            {filtrados.length === 0 ? (
+            {filtrados.length === 0 && !isLoading && !isError ? (
               <tr>
                 <td colSpan={10} style={{ textAlign: 'center' }}>
                   Sin pacientes
@@ -592,12 +608,14 @@ export function AdminBlogSection() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const { data: articulos = [] } = useQuery({
+  const {
+    data: articulos = [],
+    isLoading: loadingArticulos,
+    isError: articulosError,
+    error: articulosLoadError,
+  } = useQuery({
     queryKey: ['admin-blog'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/blog');
-      return res.ok ? res.json() : [];
-    },
+    queryFn: () => fetchAdminList('/api/admin/blog') as Promise<Articulo[]>,
   });
 
   useEffect(() => {
@@ -780,6 +798,11 @@ export function AdminBlogSection() {
         <div className="admin-table-header">
           <h2>Artículos guardados</h2>
         </div>
+        {loadingArticulos ? (
+          <p style={{ color: '#888' }}>Cargando artículos…</p>
+        ) : articulosError ? (
+          <p style={{ color: '#c0392b' }}>{apiErrorMessage(articulosLoadError)}</p>
+        ) : null}
         <table>
           <thead>
             <tr>
@@ -826,7 +849,7 @@ export function AdminBlogSection() {
                 </td>
               </tr>
             ))}
-            {articulos.length === 0 ? (
+            {articulos.length === 0 && !loadingArticulos && !articulosError ? (
               <tr>
                 <td colSpan={6} style={{ textAlign: 'center' }}>
                   Sin artículos

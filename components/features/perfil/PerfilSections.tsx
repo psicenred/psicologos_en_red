@@ -448,10 +448,23 @@ export function PerfilVideoSection({
   );
 }
 
-export function PerfilChatSection({ contactos }: { contactos: Contacto[] }) {
+export function PerfilChatSection({
+  contactos,
+  contactosLoading,
+  contactosError,
+}: {
+  contactos: Contacto[];
+  contactosLoading?: boolean;
+  contactosError?: string | null;
+}) {
   return (
     <div className="seccion-panel" id="seccion-chat">
-      <PrivateChat contactos={contactos} variant="legacy" />
+      <PrivateChat
+        contactos={contactos}
+        contactosLoading={contactosLoading}
+        contactosError={contactosError}
+        variant="legacy"
+      />
     </div>
   );
 }

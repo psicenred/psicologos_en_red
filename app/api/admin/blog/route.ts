@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { listAdminBlogArticles } from '@/lib/admin/queries';
 import {
   crearSlug,
   normalizarPalabrasClave,
@@ -18,19 +19,13 @@ export async function GET() {
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const result = await query(`
-      SELECT id, titulo, slug, autor, tiempo_lectura, meta_title, meta_description,
-             palabras_clave, extracto, portada_url, publicado, fecha_publicacion, created_at, updated_at
-      FROM blog_articulos
-      ORDER BY fecha_publicacion DESC, id DESC
-    `);
-    return NextResponse.json(result.rows);
+    const rows = await listAdminBlogArticles();
+    return NextResponse.json(rows);
   } catch (error) {
     console.error('GET /api/admin/blog:', error);
-    return NextResponse.json(
-      { error: 'Error al obtener artículos del blog' },
-      { status: 500 },
-    );
+    const message =
+      error instanceof Error ? error.message : 'Error al obtener artículos del blog';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

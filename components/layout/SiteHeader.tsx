@@ -6,19 +6,28 @@ import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/routing';
 import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
+import type { PublicSessionState } from '@/lib/auth/public-session';
 import './header-legacy.css';
 
-type SessionState = {
-  autenticado: boolean;
-  nombre?: string;
-  rol?: string;
-};
+type SessionState = PublicSessionState;
 
-export function SiteHeader() {
+function perfilLabelForSession(session: SessionState, t: (key: string, values?: { name: string }) => string) {
+  if (!session.autenticado) return t('myProfile');
+  if (session.rol === 'admin') return t('adminPanel');
+  if (session.rol === 'psicologo') return t('doctorPanel');
+
+  const firstName = (session.nombre || '').trim().split(/\s+/)[0];
+  if (firstName) return t('userProfileOf', { name: firstName });
+  return t('userProfile');
+}
+
+export function SiteHeader({ initialSession }: { initialSession?: SessionState }) {
   const t = useTranslations('nav');
   const pathname = usePathname();
   const { navToggleRef, closeMobileNav, onNavToggleChange } = usePerfilMobileNav();
-  const [session, setSession] = useState<SessionState>({ autenticado: false });
+  const [session, setSession] = useState<SessionState>(
+    initialSession ?? { autenticado: false },
+  );
 
   const NAV: { href: string; label: string; hideInPwa?: boolean }[] = [
     { href: '/', label: t('home'), hideInPwa: true },
@@ -28,7 +37,7 @@ export function SiteHeader() {
   ];
 
   useEffect(() => {
-    fetch('/api/estado-sesion')
+    fetch('/api/estado-sesion', { cache: 'no-store', credentials: 'same-origin' })
       .then((r) => r.json())
       .then((data: SessionState) => setSession(data))
       .catch(() => setSession({ autenticado: false }));
@@ -58,12 +67,7 @@ export function SiteHeader() {
         ? '/panel-admin'
         : '/perfil';
 
-  const perfilLabel = (() => {
-    if (!session.autenticado) return t('myProfile');
-    const firstName = (session.nombre || '').trim().split(/\s+/)[0];
-    if (firstName) return t('siteOf', { name: firstName });
-    return t('myProfile');
-  })();
+  const perfilLabel = perfilLabelForSession(session, t);
 
   return (
     <header className="main-header">
@@ -71,10 +75,6 @@ export function SiteHeader() {
         <Image src="/images/logo.png" alt="Logo" width={40} height={40} priority />
         <span>Psicólogos en Red</span>
       </Link>
-
-      <div className="header-lang-flags">
-        <LanguageSwitcher onChange={closeMobileNav} />
-      </div>
 
       <input
         ref={navToggleRef}
@@ -101,6 +101,7 @@ export function SiteHeader() {
             </li>
           ))}
           <li className="nav-lang-item nav-hide-in-pwa">
+            <span className="nav-lang-label">{t('language')}</span>
             <LanguageSwitcher onChange={closeMobileNav} />
           </li>
           <li>

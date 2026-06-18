@@ -12,6 +12,7 @@ import {
 } from '@/components/features/doctor/DoctorPanelSections';
 import { DoctorAgendaSection, DoctorDocumentosSection } from '@/components/features/doctor/DoctorSections';
 import { type CitaDoctor } from '@/components/features/doctor/doctor-helpers';
+import { fetchApiList, networkErrorMessage } from '@/lib/fetch-api';
 import { useDailyCall } from '@/lib/hooks/useDailyCall';
 
 export function PanelDoctorApp() {
@@ -39,12 +40,14 @@ export function PanelDoctorApp() {
     },
   });
 
-  const { data: pacientes = [] } = useQuery({
+  const {
+    data: pacientes = [],
+    isLoading: loadingPacientes,
+    isError: pacientesError,
+    error: pacientesLoadError,
+  } = useQuery({
     queryKey: ['doctor-pacientes'],
-    queryFn: async () => {
-      const res = await fetch('/api/doctor/pacientes');
-      return res.ok ? res.json() : [];
-    },
+    queryFn: () => fetchApiList<{ id: number; nombre: string }>('/api/doctor/pacientes'),
   });
 
   const { data: unread = { count: 0 } } = useQuery({
@@ -114,7 +117,15 @@ export function PanelDoctorApp() {
         />
       )}
 
-      {section === 'chat' && <DoctorChatSection contactos={chatContactos} />}
+      {section === 'chat' && (
+        <DoctorChatSection
+          contactos={chatContactos}
+          contactosLoading={loadingPacientes}
+          contactosError={
+            pacientesError ? networkErrorMessage(String(pacientesLoadError)) : null
+          }
+        />
+      )}
 
       {section === 'video' && (
         <DoctorVideoSection

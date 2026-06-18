@@ -11,6 +11,7 @@ import {
   PerfilVideoSection,
 } from '@/components/features/perfil/PerfilSections';
 import { type CitaPaciente } from '@/components/features/perfil/perfil-helpers';
+import { fetchApiList, networkErrorMessage } from '@/lib/fetch-api';
 import { useDailyCall } from '@/lib/hooks/useDailyCall';
 
 type User = {
@@ -66,10 +67,10 @@ export function PerfilApp() {
   const contactos = useQuery({
     queryKey: ['mis-psicologos-contacto'],
     queryFn: async () => {
-      const res = await fetch('/api/mis-psicologos-contacto');
-      if (!res.ok) return [];
-      const rows = (await res.json()) as ContactoRaw[];
-      return rows.map((r) => ({ id: r.usuario_id, nombre: r.nombre }));
+      const rows = await fetchApiList<ContactoRaw>('/api/mis-psicologos-contacto');
+      return rows
+        .map((r) => ({ id: Number(r.usuario_id), nombre: r.nombre }))
+        .filter((c) => Number.isFinite(c.id) && c.id > 0);
     },
   });
 
@@ -130,7 +131,13 @@ export function PerfilApp() {
       )}
 
       {section === 'chat' && (
-        <PerfilChatSection contactos={contactos.data || []} />
+        <PerfilChatSection
+          contactos={contactos.data || []}
+          contactosLoading={contactos.isLoading}
+          contactosError={
+            contactos.isError ? networkErrorMessage(String(contactos.error)) : null
+          }
+        />
       )}
 
       {section === 'config' && user ? (

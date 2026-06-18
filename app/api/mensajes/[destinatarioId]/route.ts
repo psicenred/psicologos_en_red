@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { databaseUnavailableJson, requireAuthUsuario } from '@/lib/auth/api';
+import { databaseUnavailableJson, normalizeRol, requireAuthUsuario } from '@/lib/auth/api';
 import { hasHadAppointment } from '@/lib/chat/appointments';
 import { decryptMensajeContenido } from '@/lib/crypto/messages';
 import { isDatabaseConfigured, query } from '@/lib/db';
@@ -21,7 +21,7 @@ export async function GET(
   }
 
   try {
-    if (auth.rol === 'psicologo') {
+    if (normalizeRol(auth.rol) === 'psicologo') {
       const hasAppointment = await hasHadAppointment(miId, parseInt(suId, 10));
       if (!hasAppointment) {
         return NextResponse.json(

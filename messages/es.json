@@ -9,6 +9,10 @@
     "academy": "Academia",
     "blog": "Blog",
     "myProfile": "Mi Perfil",
+    "userProfile": "Perfil de usuario",
+    "userProfileOf": "Perfil de {name}",
+    "doctorPanel": "Panel especialista",
+    "adminPanel": "Panel admin",
     "siteOf": "Sitio de {name}",
     "menu": "Menú",
     "language": "Idioma"

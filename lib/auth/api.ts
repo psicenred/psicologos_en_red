@@ -131,7 +131,7 @@ export function forbiddenJson(message = 'No autorizado') {
 export async function requireAdmin(): Promise<SessionUsuario | NextResponse> {
   const usuario = await getAuthUsuario();
   if (!usuario) return unauthorizedJson();
-  if (usuario.rol !== 'admin') return forbiddenJson('Solo administradores');
+  if (normalizeRol(usuario.rol) !== 'admin') return forbiddenJson('Solo administradores');
   return usuario;
 }
 
@@ -140,7 +140,7 @@ export async function requirePsicologo(): Promise<
 > {
   const usuario = await getAuthUsuario();
   if (!usuario) return unauthorizedJson();
-  if (usuario.rol !== 'psicologo') return forbiddenJson('Acceso denegado');
+  if (normalizeRol(usuario.rol) !== 'psicologo') return forbiddenJson('Acceso denegado');
   return usuario;
 }
 
