@@ -1,14 +1,13 @@
 'use client';
 
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { loginSchema, type LoginInput } from '@/lib/schemas/auth';
+import { loginSchema } from '@/lib/schemas/auth';
 
 type LoginApiError =
   | 'missing_credentials'
@@ -37,27 +36,55 @@ function mapLoginApiError(code: string | undefined, t: (key: string) => string):
   }
 }
 
+function safeRedirectPath(next: string | null, fallback: string): string {
+  if (!next || !next.startsWith('/') || next.startsWith('//')) return fallback;
+  return next;
+}
+
 export function LoginForm() {
   const t = useTranslations('auth');
+  const searchParams = useSearchParams();
+  const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
+  const [submitting, setSubmitting] = useState(false);
 
-  const loading = isSubmitting || isRedirecting;
+  useEffect(() => {
+    document.body.style.overflow = '';
+  }, []);
 
-  async function onSubmit(data: LoginInput) {
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     setError('');
+    setFieldErrors({});
+
+    const form = formRef.current ?? e.currentTarget;
+    const fd = new FormData(form);
+    const raw = {
+      email: String(fd.get('email') ?? '').trim(),
+      password: String(fd.get('password') ?? ''),
+    };
+
+    const parsed = loginSchema.safeParse(raw);
+    if (!parsed.success) {
+      const next: { email?: string; password?: string } = {};
+      for (const issue of parsed.error.issues) {
+        const key = issue.path[0];
+        if (key === 'email' || key === 'password') next[key] = issue.message;
+      }
+      setFieldErrors(next);
+      return;
+    }
+
+    setSubmitting(true);
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: data.email.trim().toLowerCase(),
-          password: data.password,
+          email: parsed.data.email.toLowerCase(),
+          password: parsed.data.password,
         }),
         credentials: 'same-origin',
       });
@@ -68,9 +95,13 @@ export function LoginForm() {
         error?: string;
       } | null;
 
-      if (res.ok && payload?.ok && payload.redirect) {
+      if (res.ok && payload?.ok) {
         setIsRedirecting(true);
-        window.location.href = payload.redirect;
+        const next = safeRedirectPath(
+          searchParams.get('next') || searchParams.get('redirect'),
+          payload.redirect || '/perfil',
+        );
+        window.location.assign(next);
         return;
       }
 
@@ -82,38 +113,50 @@ export function LoginForm() {
       setError(mapLoginApiError(payload?.error, t));
     } catch {
       setError(t('connectionError'));
+    } finally {
+      setSubmitting(false);
     }
   }
 
+  const loading = submitting || isRedirecting;
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form ref={formRef} onSubmit={onSubmit} className="auth-form space-y-4" noValidate>
       <div>
         <Label htmlFor="email">{t('email')}</Label>
         <Input
           id="email"
+          name="email"
           type="email"
+          inputMode="email"
           autoComplete="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           placeholder="ejemplo@correo.com"
-          disabled={loading}
-          {...register('email')}
+          className="auth-input text-base"
+          disabled={isRedirecting}
         />
-        {errors.email ? <p className="text-xs text-destructive">{errors.email.message}</p> : null}
+        {fieldErrors.email ? (
+          <p className="text-xs text-destructive">{fieldErrors.email}</p>
+        ) : null}
       </div>
       <div>
         <Label htmlFor="password">{t('password')}</Label>
         <Input
           id="password"
+          name="password"
           type="password"
           autoComplete="current-password"
-          disabled={loading}
-          {...register('password')}
+          className="auth-input text-base"
+          disabled={isRedirecting}
         />
-        {errors.password ? (
-          <p className="text-xs text-destructive">{errors.password.message}</p>
+        {fieldErrors.password ? (
+          <p className="text-xs text-destructive">{fieldErrors.password}</p>
         ) : null}
       </div>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      <Button type="submit" className="w-full" disabled={loading}>
+      <Button type="submit" className="w-full text-base" disabled={loading}>
         {loading ? t('loggingIn') : t('login')}
       </Button>
       <p className="text-center text-sm">

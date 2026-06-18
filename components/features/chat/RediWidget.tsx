@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import './chat-widget-legacy.css';
 import { formatBotMessage } from './redi-message-format';
@@ -76,7 +77,12 @@ function BotMessage({ msg }: { msg: Message }) {
   );
 }
 
+function isAuthRoute(pathname: string) {
+  return /\/(login|registro|reestablecer-password)(\/|$)/.test(pathname);
+}
+
 export function RediWidget() {
+  const pathname = usePathname();
   const inputId = useId();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
@@ -193,6 +199,8 @@ export function RediWidget() {
       setLoading(false);
     }
   }
+
+  if (isAuthRoute(pathname)) return null;
 
   return (
     <div className="chat-widget-wrap">

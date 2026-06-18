@@ -74,6 +74,12 @@
     min-height: 100vh;
     min-height: 100svh;
   }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 /* --- Academia (paridad con estilos.css legacy) --- */
