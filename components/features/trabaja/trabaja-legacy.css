@@ -1,0 +1,275 @@
+/* Trabaja con nosotros — portado de views/trabaja-con-nosotros.html */
+
+.trabaja-hero {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 80px 20px;
+  text-align: center;
+  color: white;
+}
+
+.trabaja-hero h1 {
+  font-size: 2.8rem;
+  margin-bottom: 15px;
+}
+
+.trabaja-hero p {
+  font-size: 1.2rem;
+  opacity: 0.9;
+  max-width: 650px;
+  margin: 0 auto;
+}
+
+.trabaja-container {
+  max-width: 1100px;
+  margin: -60px auto 60px;
+  padding: 0 20px;
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 30px;
+}
+
+.trabaja-beneficios {
+  background: white;
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+.trabaja-beneficios h2 {
+  color: #764ba2;
+  margin-top: 0;
+  margin-bottom: 25px;
+  font-size: 1.5rem;
+}
+
+.beneficio-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding: 18px;
+  background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
+  border-radius: 14px;
+  transition: transform 0.2s ease;
+}
+
+.beneficio-item:hover {
+  transform: translateX(5px);
+}
+
+.beneficio-icon {
+  font-size: 2rem;
+  width: 55px;
+  height: 55px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-radius: 14px;
+  flex-shrink: 0;
+}
+
+.beneficio-content h3 {
+  margin: 0 0 5px 0;
+  color: #333;
+  font-size: 1.05rem;
+}
+
+.beneficio-content p {
+  margin: 0;
+  color: #666;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.trabaja-form-card {
+  background: white;
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+.trabaja-form-card h2 {
+  color: #764ba2;
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1.5rem;
+}
+
+.trabaja-form-card .subtitulo {
+  color: #888;
+  margin-bottom: 30px;
+  font-size: 0.95rem;
+}
+
+.trabaja-form-card .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.trabaja-form-card .form-group {
+  margin-bottom: 18px;
+}
+
+.trabaja-form-card .form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.trabaja-form-card .form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.trabaja-form-card .form-group input,
+.trabaja-form-card .form-group textarea,
+.trabaja-form-card .form-group select {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #eee;
+  border-radius: 12px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+  font-family: inherit;
+  background: white;
+}
+
+.trabaja-form-card .form-group input:focus,
+.trabaja-form-card .form-group textarea:focus,
+.trabaja-form-card .form-group select:focus {
+  outline: none;
+  border-color: #764ba2;
+  box-shadow: 0 0 0 4px rgba(118, 75, 162, 0.1);
+}
+
+.trabaja-form-card .form-group textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.btn-enviar-aplicacion {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.btn-enviar-aplicacion:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(118, 75, 162, 0.4);
+}
+
+.btn-enviar-aplicacion:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.modal-exito-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 5000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-exito-overlay.visible {
+  display: flex;
+}
+
+.modal-exito-content {
+  background: white;
+  padding: 50px 40px;
+  border-radius: 24px;
+  text-align: center;
+  max-width: 450px;
+  width: 90%;
+  animation: trabajaModalIn 0.3s ease;
+}
+
+@keyframes trabajaModalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.modal-exito-icon {
+  font-size: 4rem;
+  margin-bottom: 20px;
+}
+
+.modal-exito-content h3 {
+  color: #764ba2;
+  margin: 0 0 15px 0;
+  font-size: 1.5rem;
+}
+
+.modal-exito-content p {
+  color: #666;
+  margin: 0 0 25px 0;
+  line-height: 1.6;
+}
+
+.btn-cerrar-modal {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  padding: 14px 40px;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-cerrar-modal:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 20px rgba(118, 75, 162, 0.3);
+}
+
+@media (max-width: 768px) {
+  .trabaja-container {
+    grid-template-columns: 1fr;
+    margin-top: -40px;
+  }
+
+  .trabaja-hero h1 {
+    font-size: 2rem;
+  }
+
+  .trabaja-form-card .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .trabaja-beneficios,
+  .trabaja-form-card {
+    padding: 25px;
+  }
+
+  .modal-exito-content {
+    padding: 35px 25px;
+  }
+}

@@ -20,6 +20,7 @@ export async function GET() {
         c.estado,
         c.link_sesion,
         c.notas,
+        c.motivo_de_consulta AS motivo,
         u.nombre AS paciente_nombre,
         u.id AS paciente_usuario_id,
         u.id AS id_para_chat,
@@ -38,6 +39,7 @@ export async function GET() {
       if (msg.includes('zona_horaria')) {
         result = await query(
           `SELECT c.id AS cita_id, c.fecha, c.hora, c.estado, c.link_sesion, c.notas,
+                  c.motivo_de_consulta AS motivo,
                   u.nombre AS paciente_nombre, u.id AS paciente_usuario_id, u.id AS id_para_chat
            FROM citas c
            JOIN vista_psicologos v ON c.psicologo_id = v.psicologo_id_tabla

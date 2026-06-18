@@ -1,0 +1,108 @@
+/* Páginas legales — portado de views/aviso-privacidad.html y terminos-condiciones.html */
+
+.terminos-bg {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.92)),
+    url('/images/logo.png') no-repeat center center;
+  background-size: 400px;
+  background-attachment: fixed;
+}
+
+.terminos-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 60px 30px;
+  min-height: 70vh;
+  background: rgba(255, 255, 255, 0.95);
+  position: relative;
+}
+
+.terminos-container h1 {
+  color: var(--primario-rosa);
+  text-align: center;
+  margin-bottom: 10px;
+  font-size: 2.5rem;
+}
+
+.terminos-container .subtitulo {
+  text-align: center;
+  color: #666;
+  margin-bottom: 40px;
+  font-size: 1rem;
+}
+
+.terminos-container h2 {
+  color: var(--primario-rosa);
+  margin-top: 35px;
+  margin-bottom: 15px;
+  font-size: 1.4rem;
+  border-bottom: 2px solid var(--suave-arena);
+  padding-bottom: 8px;
+}
+
+.terminos-container h3 {
+  color: var(--secundario-azul);
+  margin-top: 20px;
+  margin-bottom: 10px;
+  font-size: 1.1rem;
+}
+
+.terminos-container p,
+.terminos-container li {
+  color: var(--texto-oscuro);
+  line-height: 1.8;
+  text-align: justify;
+  margin-bottom: 15px;
+}
+
+.terminos-container ul {
+  padding-left: 25px;
+  margin-bottom: 20px;
+}
+
+.terminos-container li {
+  margin-bottom: 10px;
+}
+
+.terminos-container .fecha-actualizacion {
+  text-align: center;
+  color: #999;
+  font-size: 0.85rem;
+  margin-top: 50px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+.terminos-container .intro-texto {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 12px;
+  border-left: 4px solid var(--primario-rosa);
+  margin-bottom: 30px;
+}
+
+.terminos-container .intro-texto p {
+  margin-bottom: 0;
+}
+
+.terminos-container .aviso-emergencia {
+  background: #fff3cd;
+  padding: 15px;
+  border-radius: 10px;
+  border-left: 4px solid #ffc107;
+}
+
+@media (max-width: 768px) {
+  .terminos-container {
+    padding: 40px 20px;
+  }
+
+  .terminos-container h1 {
+    font-size: 1.8rem;
+  }
+
+  .terminos-bg {
+    background-attachment: scroll;
+    background-size: 280px;
+  }
+}

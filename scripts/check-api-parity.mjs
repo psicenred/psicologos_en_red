@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Compara rutas API de server.js (legacy) con app/api en Next.
+ * Compara rutas API de referencia (baseline) con app/api en Next.
  * Uso: node scripts/check-api-parity.mjs
  */
 import fs from 'fs';
@@ -10,24 +10,13 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
 
-function normalizeLegacyRoute(method, route) {
-  let r = route.replace(/^\//, '');
-  r = r.replace(/:([a-zA-Z]+)/g, '[$1]');
-  if (r.startsWith('webhook/stripe')) return 'POST /api/webhook/stripe';
-  if (!r.startsWith('api/')) return null;
-  return `${method.toUpperCase()} /${r}`;
-}
-
-function collectLegacyRoutes() {
-  const src = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
-  const re = /app\.(get|post|put|delete|patch)\(\s*['"]([^'"]+)['"]/g;
-  const routes = new Set();
-  let m;
-  while ((m = re.exec(src)) !== null) {
-    const normalized = normalizeLegacyRoute(m[1], m[2]);
-    if (normalized) routes.add(normalized);
+function collectBaselineRoutes() {
+  const baselinePath = path.join(root, 'scripts/api-baseline.json');
+  if (!fs.existsSync(baselinePath)) {
+    console.error('✗ Falta scripts/api-baseline.json');
+    process.exit(1);
   }
-  return routes;
+  return new Set(JSON.parse(fs.readFileSync(baselinePath, 'utf8')));
 }
 
 function collectNextRoutes(dir = path.join(root, 'app/api'), prefix = '/api') {
@@ -56,17 +45,17 @@ function collectNextRoutes(dir = path.join(root, 'app/api'), prefix = '/api') {
   return routes;
 }
 
-const legacy = collectLegacyRoutes();
+const baseline = collectBaselineRoutes();
 const next = collectNextRoutes();
 
-const missing = [...legacy].filter((r) => !next.has(r)).sort();
-const extra = [...next].filter((r) => !legacy.has(r)).sort();
+const missing = [...baseline].filter((r) => !next.has(r)).sort();
+const extra = [...next].filter((r) => !baseline.has(r)).sort();
 
-console.log(`Legacy API routes: ${legacy.size}`);
-console.log(`Next API routes:   ${next.size}\n`);
+console.log(`Baseline API routes: ${baseline.size}`);
+console.log(`Next API routes:     ${next.size}\n`);
 
 if (missing.length === 0) {
-  console.log('✓ Paridad completa: todas las rutas legacy /api/* están en Next.\n');
+  console.log('✓ Paridad completa: todas las rutas baseline /api/* están en Next.\n');
 } else {
   console.log(`✗ Faltan en Next (${missing.length}):`);
   for (const r of missing) console.log(`  - ${r}`);

@@ -1,17 +1,27 @@
+import createIntlMiddleware from 'next-intl/middleware';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getIronSession } from 'iron-session';
-import {
-  getSessionOptions,
-  type SessionData,
-} from '@/lib/session';
+import { routing, stripLocalePrefix } from '@/i18n/routing';
+import { getSessionOptions, type SessionData } from '@/lib/session';
+
+const intlMiddleware = createIntlMiddleware(routing);
 
 function normalizeRol(rol: string | undefined): string {
   return (rol || '').trim().toLowerCase();
 }
 
-export async function middleware(request: NextRequest) {
-  const pathname = request.nextUrl.pathname;
+const PROTECTED_PREFIXES = ['/perfil', '/panel-admin', '/panel-doctor'];
+
+function isProtectedPath(pathname: string): boolean {
+  const bare = stripLocalePrefix(pathname);
+  return PROTECTED_PREFIXES.some(
+    (p) => bare === p || bare.startsWith(`${p}/`),
+  );
+}
+
+async function checkAuth(request: NextRequest): Promise<NextResponse | null> {
+  const barePath = stripLocalePrefix(request.nextUrl.pathname);
   const response = NextResponse.next();
   const session = await getIronSession<SessionData>(
     request,
@@ -21,25 +31,48 @@ export async function middleware(request: NextRequest) {
 
   if (!session.usuario) {
     const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('next', pathname);
-    // 303 si llegó un POST (p. ej. redirect 307 tras login); 307 basta para GET.
+    loginUrl.searchParams.set('next', barePath);
     const status = request.method === 'POST' ? 303 : 307;
     return NextResponse.redirect(loginUrl, status);
   }
 
   const rol = normalizeRol(session.usuario.rol);
 
-  if (pathname.startsWith('/panel-admin') && rol !== 'admin') {
+  if (barePath.startsWith('/panel-admin') && rol !== 'admin') {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  if (pathname.startsWith('/panel-doctor') && rol !== 'psicologo') {
+  if (barePath.startsWith('/panel-doctor') && rol !== 'psicologo') {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  return response;
+  return null;
+}
+
+export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  if (
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/auth') ||
+    pathname.startsWith('/_next') ||
+    pathname === '/logout' ||
+    pathname.startsWith('/registrar-usuario') ||
+    pathname.startsWith('/verificar-email') ||
+    pathname.startsWith('/reenviar-verificacion') ||
+    /\.[^/]+$/.test(pathname)
+  ) {
+    return NextResponse.next();
+  }
+
+  if (isProtectedPath(pathname)) {
+    const authRedirect = await checkAuth(request);
+    if (authRedirect) return authRedirect;
+  }
+
+  return intlMiddleware(request);
 }
 
 export const config = {
-  matcher: ['/perfil/:path*', '/panel-admin', '/panel-doctor'],
+  matcher: ['/', '/(en)/:path*', '/((?!api|auth|_next|_vercel|.*\\..*).*)'],
 };

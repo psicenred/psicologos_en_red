@@ -45,12 +45,22 @@ export function normalizeRol(rol: string | null | undefined): string {
   return (rol || '').trim().toLowerCase();
 }
 
+export function normalizeEmail(email: string | null | undefined): string {
+  return (email || '').trim().toLowerCase();
+}
+
 export function redirectAfterLogin(rol: string, base: string) {
   if (rol === 'admin') return redirectGet(new URL('/panel-admin', base));
   if (rol === 'psicologo') {
     return redirectGet(new URL('/panel-doctor', base));
   }
   return redirectGet(new URL('/perfil', base));
+}
+
+export function loginRedirectPath(rol: string): string {
+  if (rol === 'admin') return '/panel-admin';
+  if (rol === 'psicologo') return '/panel-doctor';
+  return '/perfil';
 }
 
 /** HTML inline (paridad con legacy) para respuestas de verificación / errores auth. */

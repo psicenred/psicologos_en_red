@@ -5,6 +5,7 @@ import { isDatabaseConfigured, query } from '@/lib/db';
 import { sendMail } from '@/lib/email';
 import {
   authMessageBox,
+  normalizeEmail,
   normalizeRol,
 } from '@/lib/auth/api';
 
@@ -13,10 +14,10 @@ export function ensureDb(): boolean {
 }
 
 export async function registerUsuario(body: Record<string, string>) {
-  const { nombre, email, password, rol, acepto_terminos, acepto_publicidad, telefono } =
-    body;
+  const { nombre, password, rol, acepto_terminos, acepto_publicidad, telefono } = body;
+  const email = normalizeEmail(body.email);
 
-  const existente = await query('SELECT id FROM usuarios WHERE email = $1', [email]);
+  const existente = await query('SELECT id FROM usuarios WHERE LOWER(email) = $1', [email]);
   if (existente.rows.length > 0) {
     return authMessageBox({
       variant: 'error',
@@ -84,13 +85,22 @@ async function sendVerificationEmail(
   });
 }
 
-export async function loginWithCredentials(email: string, password: string) {
-  const result = await query('SELECT * FROM usuarios WHERE email = $1', [email]);
+import type { SessionUsuario } from '@/lib/session';
+
+export type LoginErrorCode = 'user_not_found' | 'wrong_password' | 'unverified';
+
+export type LoginResult =
+  | { ok: true; usuario: SessionUsuario; rol: string }
+  | { ok: false; code: LoginErrorCode; email?: string };
+
+export async function loginWithCredentials(
+  email: string,
+  password: string,
+): Promise<LoginResult> {
+  const emailNorm = normalizeEmail(email);
+  const result = await query('SELECT * FROM usuarios WHERE LOWER(email) = $1', [emailNorm]);
   if (result.rows.length === 0) {
-    return {
-      errorHtml:
-        'Usuario no encontrado. <a href="/registro">Regístrate</a>',
-    };
+    return { ok: false, code: 'user_not_found' };
   }
 
   const usuario = result.rows[0] as {
@@ -105,33 +115,27 @@ export async function loginWithCredentials(email: string, password: string) {
   const rolNormalizado = normalizeRol(usuario.rol);
 
   if (rolNormalizado !== 'admin' && !usuario.email_verificado) {
-    return {
-      unverifiedHtml: authMessageBox({
-        variant: 'warning',
-        title: '⚠️ Correo no verificado',
-        body: 'Necesitas verificar tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada (y spam).',
-        actionHtml: `
-          <a href="/reenviar-verificacion?email=${encodeURIComponent(email)}" style="display: inline-block; margin-top: 15px; padding: 10px 25px; background: #ffc107; color: #856404; text-decoration: none; border-radius: 5px; font-weight: bold;">Reenviar correo de verificación</a>
-          <br><br>
-          <a href="/login" style="color: #856404;">Volver al login</a>
-        `,
-      }),
-    };
+    return { ok: false, code: 'unverified', email: emailNorm };
   }
 
   const match = await bcrypt.compare(password, usuario.password);
   if (!match) {
-    return { errorHtml: 'Contraseña incorrecta. <a href="/login">Volver</a>' };
+    return { ok: false, code: 'wrong_password' };
   }
 
   if (rolNormalizado === 'paciente' || rolNormalizado === 'psicologo') {
-    await query(
-      'UPDATE usuarios SET veces_inicio_sesion = COALESCE(veces_inicio_sesion, 0) + 1 WHERE id = $1',
-      [usuario.id],
-    );
+    try {
+      await query(
+        'UPDATE usuarios SET veces_inicio_sesion = COALESCE(veces_inicio_sesion, 0) + 1 WHERE id = $1',
+        [usuario.id],
+      );
+    } catch (error) {
+      console.warn('[login] No se pudo actualizar veces_inicio_sesion:', error);
+    }
   }
 
   return {
+    ok: true,
     usuario: {
       id: usuario.id,
       nombre: usuario.nombre,
@@ -195,11 +199,12 @@ export async function verifyEmailToken(token: string) {
 }
 
 export async function resendVerificationEmail(email: string) {
-  if (!email) return { redirect: '/login' };
+  const emailNorm = normalizeEmail(email);
+  if (!emailNorm) return { redirect: '/login' };
 
   const result = await query(
-    'SELECT id, nombre, email_verificado FROM usuarios WHERE email = $1',
-    [email],
+    'SELECT id, nombre, email_verificado FROM usuarios WHERE LOWER(email) = $1',
+    [emailNorm],
   );
 
   if (result.rows.length === 0) {
@@ -237,7 +242,7 @@ export async function resendVerificationEmail(email: string) {
   const enlaceVerificacion = `${getBaseUrl()}/verificar-email?token=${tokenVerificacion}`;
 
   await sendMail({
-    to: email,
+    to: emailNorm,
     subject: '✅ Verifica tu cuenta - Psicólogos en Red',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -254,13 +259,14 @@ export async function resendVerificationEmail(email: string) {
   return authMessageBox({
     variant: 'success',
     title: '📧 ¡Correo enviado!',
-    body: `Hemos enviado un nuevo enlace de verificación a <strong>${email}</strong>. Revisa tu bandeja de entrada (y spam).`,
+    body: `Hemos enviado un nuevo enlace de verificación a <strong>${emailNorm}</strong>. Revisa tu bandeja de entrada (y spam).`,
     actionHtml: `<a href="/login" style="display: inline-block; margin-top: 15px; padding: 12px 30px; background: #28a745; color: white; text-decoration: none; border-radius: 25px;">Volver al login</a>`,
   });
 }
 
 export async function requestPasswordReset(email: string) {
-  const result = await query('SELECT * FROM usuarios WHERE email = $1', [email]);
+  const emailNorm = normalizeEmail(email);
+  const result = await query('SELECT * FROM usuarios WHERE LOWER(email) = $1', [emailNorm]);
   if (result.rows.length === 0) return;
 
   const usuario = result.rows[0] as { id: number; nombre: string };
@@ -275,7 +281,7 @@ export async function requestPasswordReset(email: string) {
   const resetLink = `${getBaseUrl()}/reestablecer-password?token=${tokenReset}`;
 
   await sendMail({
-    to: email,
+    to: emailNorm,
     subject: 'Reestablece tu contraseña - Psicólogos en Red 🔐',
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">

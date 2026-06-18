@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server';
 import { databaseUnavailableJson } from '@/lib/auth/api';
 import { isDatabaseConfigured, query } from '@/lib/db';
+import { asStringArray } from '@/lib/pg-arrays';
+
+function normalizeRow(row: Record<string, unknown>) {
+  return {
+    ...row,
+    problemas_principales: asStringArray(row.problemas_principales),
+    servicios: asStringArray(row.servicios),
+  };
+}
 
 function buildCatalogSql(inMexico: string | null, withVisibility: boolean): string {
   let sql = 'SELECT * FROM psicologos';
@@ -27,12 +36,12 @@ export async function GET(request: Request) {
   try {
     try {
       const result = await query(buildCatalogSql(inMexico, true));
-      return NextResponse.json(result.rows);
+      return NextResponse.json(result.rows.map((r) => normalizeRow(r as Record<string, unknown>)));
     } catch (error) {
       const code = (error as { code?: string }).code;
       if (code !== '42703') throw error;
       const result = await query(buildCatalogSql(inMexico, false));
-      return NextResponse.json(result.rows);
+      return NextResponse.json(result.rows.map((r) => normalizeRow(r as Record<string, unknown>)));
     }
   } catch (error) {
     console.error('GET /api/psicologos:', error);

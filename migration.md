@@ -113,11 +113,11 @@ secret: 'mi-clave-secreta-psicologos'
 
 | Capa | Estado |
 |------|--------|
-| **Legacy Express** | Activo: `server.js` (~4.555 líneas, **103 handlers** de ruta) |
-| **Frontend** | 16 HTML en `views/` + JS/CSS en `public/` |
-| **Next.js** | Fase 2: 9 páginas públicas vía puente `views/*.html` + `LegacyPageClient` |
-| **Arranque** | `npm run dev` → Next :3000 · `npm run dev:legacy` → Express :3001 (requerido en dev para `/api/*` dinámico) |
-| **DB** | Postgres vía `pg` + `DATABASE_URL` (`db.js`); dump en `railway_full_dump.sql` + 15 migraciones en `migrations/` |
+| **Legacy Express** | ~~Activo~~ **Eliminado (Fase 8)** — `server.js`, `db.js`, `views/` archivados |
+| **Frontend** | **100% React/TSX** — Tailwind v4 + shadcn/ui; sin puente HTML |
+| **Next.js** | 17 páginas TSX + 77+ APIs en `app/api/` |
+| **Arranque** | `npm run dev` → Next :3000 (único servidor) |
+| **DB** | Postgres vía `lib/db.ts` + `DATABASE_URL`; dump en `railway_full_dump.sql` + 15 migraciones |
 | **Uploads** | Locales en `uploads/` (gitignored) y `public/uploads/blog/` |
 
 ---
@@ -126,10 +126,11 @@ secret: 'mi-clave-secreta-psicologos'
 
 | Archivo / carpeta | Rol |
 |-------------------|-----|
-| `server.js` | API y lógica principal (~100 rutas) |
-| `db.js` | Conexión Postgres (`DATABASE_URL`, SSL en Railway) |
-| `views/*.html` | UI actual (16 páginas) |
-| `public/` | Assets estáticos, PWA, i18n, chat widget |
+| `app/` | Páginas y route handlers Next.js |
+| `components/` | UI shadcn, layout, features (catálogo, auth, dashboards, chat) |
+| `lib/` | Sesión, DB, auth, citas, Stripe, storage |
+| `app/globals.css` | Design tokens marca + Tailwind |
+| `public/` | Assets estáticos, PWA, imágenes |
 | `utils/dbHelpers.js` | Helpers DB (ej. `hasHadAppointment`) |
 | `migrations/*.sql` | Migraciones incrementales del esquema |
 | `railway_full_dump.sql` | Dump base de referencia |
@@ -566,7 +567,7 @@ req.session.usuario = { id, nombre, email, rol };
 
 ```
 Fase 1 (Fundación) → Fase 2 (Público) → Fase 3 (Auth) → Fase 4 (Citas/Pagos)
-→ Fase 5 (Paneles) → Fase 6 (Chat/Video/Storage) → Fase 7 (QA/Cutover)
+→ Fase 5 (Paneles) → Fase 6 (Chat/Video/Storage) → Fase 7 (QA/Cutover) → Fase 8 (UI React)
 ```
 
 | Fase | Alcance | Entregable |
@@ -578,8 +579,9 @@ Fase 1 (Fundación) → Fase 2 (Público) → Fase 3 (Auth) → Fase 4 (Citas/Pa
 | **5** | Paneles | `panel-doctor`, `panel-admin` (Quill editor) |
 | **6** | Chat, Storage, video | mensajes, buckets Supabase, Daily.co |
 | **7** | QA + cutover | Paridad API, health, scripts QA/migración, checklist cutover (§11h) |
+| **8** | UI React/TSX | 17 páginas TSX, Tailwind+shadcn, eliminar legacy HTML/Express (§11i) |
 
-Legacy Express (`npm run dev:legacy`) corre en paralelo **hasta Fase 7**.
+Legacy Express eliminado en **Fase 8**.
 
 ---
 
@@ -844,7 +846,52 @@ npm run migrate-storage
 
 Los pasos de DNS, Vercel env, Stripe webhook, cron-job.org, migración delta DB y apagar Railway **no se ejecutan desde el sandbox**. Ver [§14 Cutover](#14-cutover-solo-cuando-se-apruebe).
 
-**Post-cutover:** `npm run dev:legacy` queda como referencia histórica; no es necesario en producción Next-only.
+**Post-cutover:** Express legacy eliminado; solo Next.js en producción y desarrollo.
+
+---
+
+## 11i. Entregables Fase 8 — UI React/TSX (sin legacy)
+
+| Entregable | Estado |
+|------------|--------|
+| Tailwind v4 + shadcn/ui + tokens marca (`app/globals.css`) | ✅ |
+| `SiteHeader`, `SiteFooter`, `PublicLayout`, `AuthLayout`, `DashboardShell` | ✅ |
+| `RediWidget` React (reemplaza `chat-widget.js`) | ✅ |
+| 9 páginas públicas TSX (index, catálogo, blog, academia, contacto, nosotros, legales, trabaja) | ✅ |
+| 4 páginas auth TSX (login, registro, reestablecer-password, registro-exitoso) | ✅ |
+| 3 paneles TSX (`/perfil`, `/panel-doctor`, `/panel-admin`) | ✅ |
+| `npm run build` | ✅ |
+| Eliminado: `views/`, `components/legacy/`, `lib/legacy-view.ts`, `server.js`, `db.js` | ✅ |
+| Eliminado: `estilos.css`, `chat-widget.js/css`, `i18n.js`, rewrites `/legacy/*` | ✅ |
+| `next-intl` + `messages/es.json`, `messages/en.json` | ✅ |
+| Rutas bajo `app/[locale]/` con `localePrefix: as-needed` | ✅ |
+| `LanguageSwitcher` en header | ✅ |
+
+### Checklist por página (Fase 8)
+
+| Ruta | Componente | Legacy eliminado |
+|------|------------|------------------|
+| `/` | `HomePage` | ✅ |
+| `/catalogo` | `CatalogoClient` | ✅ |
+| `/blog`, `/blog/[slug]` | `BlogList`, `BlogArticle` | ✅ |
+| `/academia` | `AcademiaGrid` | ✅ |
+| `/contacto` | `ContactoForm` | ✅ |
+| `/nosotros` | `PublicLayout` + contenido | ✅ |
+| `/trabaja-con-nosotros` | `TrabajaForm` | ✅ |
+| `/aviso-privacidad`, `/terminos-condiciones` | `LegalDocument` | ✅ |
+| `/registro-exitoso` | estática TSX | ✅ |
+| `/login`, `/registro`, `/reestablecer-password` | forms React + zod | ✅ |
+| `/perfil` | `PerfilApp` | ✅ |
+| `/panel-doctor` | `PanelDoctorApp` | ✅ |
+| `/panel-admin` | `PanelAdminApp` | ✅ |
+
+### Pendiente post-Fase 8 (mejoras incrementales)
+
+- [x] Paridad funcional paneles: video Daily.co, reagendar, chat PDF, notas clínicas, horario/vacaciones/documentos doctor, Tiptap blog CMS admin
+- [x] Auth forms con zod + react-hook-form
+- [x] Paridad sitio público: home wizard encuesta, testimonios, FAQ; catálogo con calendario y filtros; nosotros carrusel
+- [x] i18n ES/EN con `next-intl` (`/en/*`, selector ES/EN en header)
+- [ ] QA manual checklist §11h en staging
 
 ---
 
@@ -855,7 +902,7 @@ Los pasos de DNS, Vercel env, Stripe webhook, cron-job.org, migración delta DB 
 3. Si algo se desvía de las [decisiones fijas](#0-decisiones-arquitectónicas-fijas), **avisar explícitamente** antes de implementar.
 4. Mantener **`MIGRATION.md`** actualizado con cada decisión.
 5. Si hay ambigüedad en código legacy, **preguntar** antes de asumir.
-6. Legacy (`npm run dev:legacy`) permanece como referencia; **no es necesario** para operar Next en producción (Fase 7 ✅).
+6. Legacy Express **eliminado** en Fase 8; solo `npm run dev` (Next :3000).
 7. **No commits** salvo petición explícita del owner.
 
 ---
@@ -904,4 +951,4 @@ Checklist documental — **no ejecutar hasta "listo para producción"**:
 | 2026-06-01 | **Fase 4 completada:** calendario, Stripe checkout/webhook, agendar/reagendar/cancelar, crons recordatorios, emails/WhatsApp; webhook en `/api/webhook/stripe` (§11e). |
 | 2026-06-01 | **Fase 5 completada:** paneles admin/doctor en Next, middleware por rol, 32+ APIs paneles/chat/video; build 69 rutas (§11f). |
 | 2026-06-01 | **Fase 6 completada:** APIs públicas, Storage integrado, 77 rutas; proxy `/api/*` eliminado en dev (§11g). |
-| 2026-06-01 | **Fase 7 completada (sandbox):** paridad API 77/77, health, scripts QA/migración, checklist cutover (§11h). |
+| 2026-06-17 | **i18n completado:** next-intl ES/EN, rutas `[locale]`, traducciones nav/home/catálogo/auth. |

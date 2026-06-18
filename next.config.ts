@@ -1,23 +1,8 @@
 import type { NextConfig } from 'next';
+import createNextIntlPlugin from 'next-intl/plugin';
 
-const legacyPort = process.env.LEGACY_PORT || '3001';
+const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 
-const nextConfig: NextConfig = {
-  async rewrites() {
-    if (process.env.NODE_ENV !== 'development') {
-      return [];
-    }
+const nextConfig: NextConfig = {};
 
-    const legacyBase = `http://localhost:${legacyPort}`;
-
-    // Solo fallback legacy explícito (/legacy/*). APIs y paneles están en Next.
-    return [
-      {
-        source: '/legacy/:path*',
-        destination: `${legacyBase}/:path*`,
-      },
-    ];
-  },
-};
-
-export default nextConfig;
+export default withNextIntl(nextConfig);
