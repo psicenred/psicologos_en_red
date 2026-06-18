@@ -8,10 +8,10 @@ export async function fetchJsonArray<T>(
   init?: RequestInit,
 ): Promise<{ data: T[]; error: string | null }> {
   try {
+    // Igual que fetch() en admin/citas: incluir cookies en same-origin.
     const res = await fetch(url, {
-      credentials: 'same-origin',
-      cache: 'no-store',
       ...init,
+      credentials: init?.credentials ?? 'include',
     });
     const body = await res.json();
     if (!res.ok) {
@@ -36,9 +36,8 @@ export async function fetchJson<T>(
 ): Promise<{ data: T | null; error: string | null }> {
   try {
     const res = await fetch(url, {
-      credentials: 'same-origin',
-      cache: 'no-store',
       ...init,
+      credentials: init?.credentials ?? 'include',
     });
     const body = await res.json();
     if (!res.ok) {

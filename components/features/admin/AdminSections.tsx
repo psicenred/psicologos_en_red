@@ -10,7 +10,7 @@ import {
   formatFecha,
   formatHora,
 } from '@/components/features/admin/admin-helpers';
-import { fetchApiList, apiErrorMessage } from '@/lib/fetch-api';
+import { apiErrorMessage } from '@/lib/fetch-api';
 
 type StatsPeriod = {
   pendiente?: number;
@@ -71,7 +71,12 @@ function ResumenCitasTable({
 }
 
 async function fetchAdminList(url: string) {
-  return fetchApiList<Record<string, unknown>>(url);
+  const res = await fetch(url);
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error ?? `HTTP ${res.status}`);
+  }
+  return res.json() as Promise<Record<string, unknown>[]>;
 }
 
 export function AdminDashboardSection() {
