@@ -11,11 +11,11 @@ import {
 import { isDatabaseConfigured, query } from '@/lib/db';
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ citaId: string }> },
 ) {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
-  const auth = await requirePsicologo();
+  const auth = await requirePsicologo(request);
   if (auth instanceof NextResponse) return auth;
 
   const { citaId: citaIdParam } = await params;
@@ -52,7 +52,7 @@ export async function POST(
   { params }: { params: Promise<{ citaId: string }> },
 ) {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
-  const auth = await requirePsicologo();
+  const auth = await requirePsicologo(request);
   if (auth instanceof NextResponse) return auth;
 
   const { citaId: citaIdParam } = await params;

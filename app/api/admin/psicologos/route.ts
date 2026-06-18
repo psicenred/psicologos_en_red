@@ -3,9 +3,9 @@ import { listAdminPsicologos } from '@/lib/admin/queries';
 import { databaseUnavailableJson, requireAdmin } from '@/lib/auth/api';
 import { isDatabaseConfigured } from '@/lib/db';
 
-export async function GET() {
+export async function GET(request: Request) {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(request);
   if (auth instanceof NextResponse) return auth;
 
   try {

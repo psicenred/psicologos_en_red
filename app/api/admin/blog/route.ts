@@ -13,9 +13,9 @@ import {
 } from '@/lib/auth/api';
 import { isDatabaseConfigured, query } from '@/lib/db';
 
-export async function GET() {
+export async function GET(request: Request) {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(request);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -31,7 +31,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(request);
   if (auth instanceof NextResponse) return auth;
 
   try {

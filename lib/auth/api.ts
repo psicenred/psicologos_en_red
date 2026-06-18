@@ -9,7 +9,7 @@ import {
 import { getPsicologoIdFromUsuarioId } from '@/lib/psicologo/id';
 
 export async function getAuthUsuario(request?: Request): Promise<SessionUsuario | null> {
-  const session = request ? await getSessionFromRequest(request) : await getSession();
+  const session = await getSession(request);
   return session.usuario ?? null;
 }
 

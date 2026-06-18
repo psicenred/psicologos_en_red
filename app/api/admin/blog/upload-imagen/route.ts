@@ -6,7 +6,7 @@ import { STORAGE_BUCKETS, storageUpload } from '@/lib/storage';
 
 export async function POST(request: Request) {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(request);
   if (auth instanceof NextResponse) return auth;
 
   try {

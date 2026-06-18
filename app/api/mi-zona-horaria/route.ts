@@ -10,7 +10,7 @@ import { getPsicologoIdFromUsuarioId } from '@/lib/psicologo/id';
 
 export async function GET(request: Request) {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
-  const auth = await requirePsicologo();
+  const auth = await requirePsicologo(request);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -58,7 +58,7 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
-  const auth = await requirePsicologo();
+  const auth = await requirePsicologo(request);
   if (auth instanceof NextResponse) return auth;
 
   const body = await parseJsonBody<{ zona_horaria?: unknown }>(request);

@@ -5,7 +5,7 @@ import { createJaasJwt, getJaasAppId, limpiaEnv } from '@/lib/jaas';
 export const runtime = 'nodejs';
 
 export async function GET(request: Request) {
-  const auth = await requireAuthUsuario();
+  const auth = await requireAuthUsuario(request);
   if (auth instanceof NextResponse) return auth;
 
   const appId = getJaasAppId();

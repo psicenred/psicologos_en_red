@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server';
 import { databaseUnavailableJson, requireAuthUsuario } from '@/lib/auth/api';
 import { isDatabaseConfigured, query } from '@/lib/db';
 
-export async function GET() {
+export async function GET(request: Request) {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
 
-  const auth = await requireAuthUsuario();
+  const auth = await requireAuthUsuario(request);
   if (auth instanceof NextResponse) return auth;
 
   if (auth.rol !== 'paciente') {

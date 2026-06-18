@@ -7,12 +7,14 @@ export type PublicSessionState = {
   rol?: string;
 };
 
-export async function getPublicSessionState(): Promise<PublicSessionState> {
+export async function getPublicSessionState(
+  request?: Request,
+): Promise<PublicSessionState> {
   if (!isDatabaseConfigured()) {
     return { autenticado: false };
   }
 
-  const usuario = await getAuthUsuario();
+  const usuario = await getAuthUsuario(request);
   if (!usuario) {
     return { autenticado: false };
   }

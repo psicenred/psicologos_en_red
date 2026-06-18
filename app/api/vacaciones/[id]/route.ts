@@ -3,11 +3,11 @@ import { databaseUnavailableJson, requirePsicologoId } from '@/lib/auth/api';
 import { isDatabaseConfigured, query } from '@/lib/db';
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
-  const auth = await requirePsicologoId();
+  const auth = await requirePsicologoId(request);
   if (auth instanceof NextResponse) return auth;
 
   const { id: idParam } = await params;

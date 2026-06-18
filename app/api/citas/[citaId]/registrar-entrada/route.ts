@@ -11,7 +11,7 @@ export async function POST(
   { params }: { params: Promise<{ citaId: string }> },
 ) {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
-  const auth = await requireAuthUsuario();
+  const auth = await requireAuthUsuario(request);
   if (auth instanceof NextResponse) return auth;
 
   const { citaId: citaIdParam } = await params;

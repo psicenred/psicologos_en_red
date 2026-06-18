@@ -6,7 +6,7 @@ import { isDatabaseConfigured } from '@/lib/db';
 export async function POST(request: Request) {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
 
-  const auth = await requireAuthUsuario();
+  const auth = await requireAuthUsuario(request);
   if (auth instanceof NextResponse) return auth;
 
   let body: Record<string, unknown> = {};

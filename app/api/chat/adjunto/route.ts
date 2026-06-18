@@ -8,7 +8,7 @@ import { STORAGE_BUCKETS, storageUpload } from '@/lib/storage';
 
 export async function POST(request: Request) {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
-  const auth = await requireAuthUsuario();
+  const auth = await requireAuthUsuario(request);
   if (auth instanceof NextResponse) return auth;
 
   try {

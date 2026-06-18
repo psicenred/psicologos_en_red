@@ -13,11 +13,11 @@ import {
 import { isDatabaseConfigured, query } from '@/lib/db';
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(request);
   if (auth instanceof NextResponse) return auth;
 
   const { id: idParam } = await params;
@@ -54,7 +54,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(request);
   if (auth instanceof NextResponse) return auth;
 
   const { id: idParam } = await params;
@@ -154,11 +154,11 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(request);
   if (auth instanceof NextResponse) return auth;
 
   const { id: idParam } = await params;

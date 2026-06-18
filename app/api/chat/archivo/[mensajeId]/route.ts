@@ -4,11 +4,11 @@ import { isDatabaseConfigured, query } from '@/lib/db';
 import { storageRead } from '@/lib/storage';
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ mensajeId: string }> },
 ) {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
-  const auth = await requireAuthUsuario();
+  const auth = await requireAuthUsuario(request);
   if (auth instanceof NextResponse) return auth;
 
   const { mensajeId: mensajeIdParam } = await params;

@@ -7,9 +7,9 @@ import {
 import { isDatabaseConfigured, query } from '@/lib/db';
 import { normalizarHoraCompleta } from '@/lib/psicologo/horario';
 
-export async function GET() {
+export async function GET(request: Request) {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
-  const auth = await requirePsicologoId();
+  const auth = await requirePsicologoId(request);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -32,7 +32,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
-  const auth = await requirePsicologoId();
+  const auth = await requirePsicologoId(request);
   if (auth instanceof NextResponse) return auth;
 
   const body = await parseJsonBody<{

@@ -3,11 +3,11 @@ import { requireAuthUsuario } from '@/lib/auth/api';
 import { marcarCitasNoRealizadas } from '@/lib/citas/no-show';
 import { isDatabaseConfigured, query } from '@/lib/db';
 
-export async function GET() {
+export async function GET(request: Request) {
   if (!isDatabaseConfigured()) {
     return NextResponse.json({ error: 'Base de datos no configurada' }, { status: 503 });
   }
-  const auth = await requireAuthUsuario();
+  const auth = await requireAuthUsuario(request);
   if (auth instanceof NextResponse) return auth;
 
   try {

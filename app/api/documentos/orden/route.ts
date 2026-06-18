@@ -8,7 +8,7 @@ import { isDatabaseConfigured, query } from '@/lib/db';
 
 export async function PUT(request: Request) {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
-  const auth = await requirePsicologoId();
+  const auth = await requirePsicologoId(request);
   if (auth instanceof NextResponse) return auth;
 
   const body = await parseJsonBody<{ ids?: unknown }>(request);

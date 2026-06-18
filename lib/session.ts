@@ -53,20 +53,30 @@ async function readSessionFromRequest(request: Request) {
   return getIronSession<SessionData>(request, new NextResponse(), getSessionOptions());
 }
 
-export async function getSession() {
-  const options = getSessionOptions();
-  const cookieStore = await cookies();
-  const session = await getIronSession<SessionData>(cookieStore, options);
-  if (session.usuario) return session;
-
-  const headerStore = await headers();
-  const cookieHeader = headerStore.get('cookie');
-  if (!cookieHeader) return session;
-
-  const request = new Request('https://psicologosenred.local', {
+/** Lee la sesión desde el header Cookie (misma vía que el middleware). */
+async function readSessionFromCookieHeader(cookieHeader: string) {
+  const request = new Request('https://localhost', {
     headers: { cookie: cookieHeader },
   });
   return readSessionFromRequest(request);
+}
+
+export async function getSession(request?: Request) {
+  if (request) {
+    return readSessionFromRequest(request);
+  }
+
+  const options = getSessionOptions();
+  const cookieName = options.cookieName ?? 'psic-en-red-session';
+
+  const headerStore = await headers();
+  const cookieHeader = headerStore.get('cookie');
+  if (cookieHeader?.includes(cookieName)) {
+    return readSessionFromCookieHeader(cookieHeader);
+  }
+
+  const cookieStore = await cookies();
+  return getIronSession<SessionData>(cookieStore, options);
 }
 
 export async function getSessionFromRequest(request: Request) {

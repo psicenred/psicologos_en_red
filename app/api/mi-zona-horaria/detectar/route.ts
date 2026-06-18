@@ -10,7 +10,7 @@ import { getPsicologoIdFromUsuarioId } from '@/lib/psicologo/id';
 
 export async function POST(request: Request) {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
-  const auth = await requirePsicologo();
+  const auth = await requirePsicologo(request);
   if (auth instanceof NextResponse) return auth;
 
   try {
