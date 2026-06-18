@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { BlogImageUpload, RichTextEditor } from '@/components/features/admin/BlogEditor';
 import {
   CarteraChart,
@@ -11,6 +12,14 @@ import {
   formatHora,
 } from '@/components/features/admin/admin-helpers';
 import { apiErrorMessage } from '@/lib/fetch-api';
+import type { AdminPanelInitialData } from '@/lib/admin/types';
+
+const SERVER_BACKED_QUERY = {
+  staleTime: Infinity,
+  refetchOnMount: false,
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+} as const;
 
 type StatsPeriod = {
   pendiente?: number;
@@ -79,13 +88,20 @@ async function fetchAdminList(url: string) {
   return res.json() as Promise<Record<string, unknown>[]>;
 }
 
-export function AdminDashboardSection() {
+export function AdminDashboardSection({
+  initialData,
+}: {
+  initialData?: AdminPanelInitialData | null;
+}) {
   const { data } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: async () => {
       const res = await fetch('/api/admin/estadisticas');
       return res.ok ? res.json() : null;
     },
+    initialData: initialData?.stats,
+    enabled: initialData?.stats === undefined,
+    ...SERVER_BACKED_QUERY,
   });
 
   const { data: citas = [] } = useQuery({
@@ -94,6 +110,9 @@ export function AdminDashboardSection() {
       const res = await fetch('/api/admin/citas');
       return res.ok ? res.json() : [];
     },
+    initialData: initialData?.citas,
+    enabled: initialData?.citas === undefined,
+    ...SERVER_BACKED_QUERY,
   });
 
   const { data: cartera = [] } = useQuery({
@@ -102,6 +121,9 @@ export function AdminDashboardSection() {
       const res = await fetch('/api/admin/cartera-psicologos');
       return res.ok ? res.json() : [];
     },
+    initialData: initialData?.cartera,
+    enabled: initialData?.cartera === undefined,
+    ...SERVER_BACKED_QUERY,
   });
 
   if (!data) {
@@ -222,18 +244,28 @@ export function AdminDashboardSection() {
   );
 }
 
-export function AdminCitasSection() {
+export function AdminCitasSection({
+  initialData,
+}: {
+  initialData?: AdminPanelInitialData | null;
+}) {
   const { data: citas = [] } = useQuery({
     queryKey: ['admin-citas'],
     queryFn: async () => {
       const res = await fetch('/api/admin/citas');
       return res.ok ? res.json() : [];
     },
+    initialData: initialData?.citas,
+    enabled: initialData?.citas === undefined,
+    ...SERVER_BACKED_QUERY,
   });
 
   const { data: psicologos = [] } = useQuery({
     queryKey: ['admin-psicologos'],
     queryFn: () => fetchAdminList('/api/admin/psicologos'),
+    initialData: initialData?.psicologos,
+    enabled: initialData?.psicologos === undefined,
+    ...SERVER_BACKED_QUERY,
   });
 
   const [fechaDesde, setFechaDesde] = useState('');
@@ -370,8 +402,13 @@ export function AdminCitasSection() {
   );
 }
 
-export function AdminPsicologosSection() {
+export function AdminPsicologosSection({
+  initialData,
+}: {
+  initialData?: AdminPanelInitialData | null;
+}) {
   const qc = useQueryClient();
+  const router = useRouter();
   const [busqueda, setBusqueda] = useState('');
 
   const {
@@ -382,6 +419,9 @@ export function AdminPsicologosSection() {
   } = useQuery({
     queryKey: ['admin-psicologos'],
     queryFn: () => fetchAdminList('/api/admin/psicologos'),
+    initialData: initialData?.psicologos,
+    enabled: initialData?.psicologos === undefined,
+    ...SERVER_BACKED_QUERY,
   });
 
   const filtrados = useMemo(() => {
@@ -413,6 +453,7 @@ export function AdminPsicologosSection() {
       }),
     });
     qc.invalidateQueries({ queryKey: ['admin-psicologos'] });
+    router.refresh();
   }
 
   return (
@@ -503,7 +544,11 @@ export function AdminPsicologosSection() {
   );
 }
 
-export function AdminPacientesSection() {
+export function AdminPacientesSection({
+  initialData,
+}: {
+  initialData?: AdminPanelInitialData | null;
+}) {
   const [busqueda, setBusqueda] = useState('');
 
   const {
@@ -514,6 +559,9 @@ export function AdminPacientesSection() {
   } = useQuery({
     queryKey: ['admin-pacientes'],
     queryFn: () => fetchAdminList('/api/admin/pacientes'),
+    initialData: initialData?.pacientes,
+    enabled: initialData?.pacientes === undefined,
+    ...SERVER_BACKED_QUERY,
   });
 
   const filtrados = useMemo(() => {
@@ -606,7 +654,11 @@ const emptyArticle = (): Partial<ArticuloFull> => ({
   portada_url: '',
 });
 
-export function AdminBlogSection() {
+export function AdminBlogSection({
+  initialData,
+}: {
+  initialData?: AdminPanelInitialData | null;
+}) {
   const qc = useQueryClient();
   const [editId, setEditId] = useState<number | 'new' | null>(null);
   const [form, setForm] = useState<Partial<ArticuloFull>>(emptyArticle());
@@ -621,6 +673,9 @@ export function AdminBlogSection() {
   } = useQuery({
     queryKey: ['admin-blog'],
     queryFn: () => fetchAdminList('/api/admin/blog') as Promise<Articulo[]>,
+    initialData: initialData?.blog as Articulo[] | undefined,
+    enabled: initialData?.blog === undefined,
+    ...SERVER_BACKED_QUERY,
   });
 
   useEffect(() => {

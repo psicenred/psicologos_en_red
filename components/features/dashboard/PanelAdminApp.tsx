@@ -10,17 +10,22 @@ import {
   AdminPacientesSection,
   AdminPsicologosSection,
 } from '@/components/features/admin/AdminSections';
+import type { AdminPanelInitialData } from '@/lib/admin/types';
 
-export function PanelAdminApp() {
+export function PanelAdminApp({
+  initialData,
+}: {
+  initialData: AdminPanelInitialData | null;
+}) {
   const [section, setSection] = useState('dashboard');
 
   return (
     <AdminShell section={section} onSectionChange={setSection}>
-      {section === 'dashboard' && <AdminDashboardSection />}
-      {section === 'citas' && <AdminCitasSection />}
-      {section === 'psicologos' && <AdminPsicologosSection />}
-      {section === 'pacientes' && <AdminPacientesSection />}
-      {section === 'blog' && <AdminBlogSection />}
+      {section === 'dashboard' && <AdminDashboardSection initialData={initialData} />}
+      {section === 'citas' && <AdminCitasSection initialData={initialData} />}
+      {section === 'psicologos' && <AdminPsicologosSection initialData={initialData} />}
+      {section === 'pacientes' && <AdminPacientesSection initialData={initialData} />}
+      {section === 'blog' && <AdminBlogSection initialData={initialData} />}
       {section === 'configuracion' && <AdminConfigSection />}
     </AdminShell>
   );

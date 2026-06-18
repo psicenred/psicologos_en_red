@@ -1,5 +1,48 @@
+import { marcarCitasNoRealizadas } from '@/lib/citas/no-show';
 import { query } from '@/lib/db';
 import { isUndefinedColumn } from '@/lib/admin/db-errors';
+
+export type AdminCitasStats = {
+  pendiente: number;
+  confirmada: number;
+  realizada: number;
+  cancelada: number;
+  'no realizada': number;
+  total: number;
+};
+
+export type AdminEstadisticas = {
+  usuarios: { rol: string; total: string }[];
+  hoy: AdminCitasStats;
+  semana: AdminCitasStats;
+  mes: AdminCitasStats;
+  historico: AdminCitasStats;
+};
+
+export type AdminCarteraItem = {
+  id: number;
+  nombre: string;
+  con_cita: number;
+  en_seguimiento: number;
+  en_riesgo: number;
+};
+
+function citasEstadoToStats(rows: { estado: string; total: string }[]): AdminCitasStats {
+  const obj: AdminCitasStats = {
+    pendiente: 0,
+    confirmada: 0,
+    realizada: 0,
+    cancelada: 0,
+    'no realizada': 0,
+    total: 0,
+  };
+  rows.forEach((r) => {
+    const bucket = obj as Record<string, number>;
+    bucket[r.estado] = parseInt(r.total, 10) || 0;
+    obj.total += parseInt(r.total, 10) || 0;
+  });
+  return obj;
+}
 
 const PSICOLOGOS_FULL_SQL = `
   SELECT p.id, p.nombre, p.especialidad, COALESCE(u.email, p.email) AS email, u.telefono, p.usuario_id,
@@ -92,6 +135,99 @@ const BLOG_LIST_BASE_SQL = `
   FROM blog_articulos
   ORDER BY fecha_publicacion DESC, id DESC
 `;
+
+export async function loadAdminEstadisticas(): Promise<AdminEstadisticas> {
+  const usuarios = await query(`SELECT rol, COUNT(*) as total FROM usuarios GROUP BY rol`);
+  const citasHoy = await query(`
+    SELECT COALESCE(estado, 'pendiente') as estado, COUNT(*) as total
+    FROM citas WHERE fecha = CURRENT_DATE GROUP BY estado
+  `);
+  const citasSemana = await query(`
+    SELECT COALESCE(estado, 'pendiente') as estado, COUNT(*) as total
+    FROM citas WHERE fecha >= CURRENT_DATE - INTERVAL '7 days' GROUP BY estado
+  `);
+  const citasMes = await query(`
+    SELECT COALESCE(estado, 'pendiente') as estado, COUNT(*) as total
+    FROM citas WHERE fecha >= DATE_TRUNC('month', CURRENT_DATE) GROUP BY estado
+  `);
+  const citasTotal = await query(`
+    SELECT COALESCE(estado, 'pendiente') as estado, COUNT(*) as total
+    FROM citas GROUP BY estado
+  `);
+
+  return {
+    usuarios: usuarios.rows as { rol: string; total: string }[],
+    hoy: citasEstadoToStats(citasHoy.rows as { estado: string; total: string }[]),
+    semana: citasEstadoToStats(citasSemana.rows as { estado: string; total: string }[]),
+    mes: citasEstadoToStats(citasMes.rows as { estado: string; total: string }[]),
+    historico: citasEstadoToStats(citasTotal.rows as { estado: string; total: string }[]),
+  };
+}
+
+export async function listAdminCitas() {
+  await marcarCitasNoRealizadas();
+  const result = await query(`
+    SELECT c.id, c.fecha, c.hora, c.estado,
+           pac.nombre as paciente_nombre, pac.email as paciente_email,
+           psi.nombre as psicologo_nombre
+    FROM citas c
+    JOIN usuarios pac ON c.paciente_id = pac.id
+    JOIN psicologos psi ON c.psicologo_id = psi.id
+    ORDER BY c.fecha DESC, c.hora DESC
+    LIMIT 100
+  `);
+  return result.rows;
+}
+
+export async function listAdminCartera(): Promise<AdminCarteraItem[]> {
+  const psicologos = await query('SELECT id, nombre FROM psicologos ORDER BY nombre');
+  const resultado: AdminCarteraItem[] = [];
+
+  for (const psi of psicologos.rows as { id: number; nombre: string }[]) {
+    const conCita = await query(
+      `SELECT COUNT(DISTINCT paciente_id) as total
+       FROM citas
+       WHERE psicologo_id = $1 AND fecha >= CURRENT_DATE AND estado NOT IN ('cancelada')`,
+      [psi.id],
+    );
+    const enSeguimiento = await query(
+      `SELECT COUNT(*) as total FROM (
+         SELECT paciente_id, MAX(fecha) as ultima
+         FROM citas WHERE psicologo_id = $1 AND fecha < CURRENT_DATE
+         GROUP BY paciente_id
+         HAVING MAX(fecha) >= CURRENT_DATE - INTERVAL '15 days'
+       ) sub
+       WHERE paciente_id NOT IN (
+         SELECT DISTINCT paciente_id FROM citas
+         WHERE psicologo_id = $1 AND fecha >= CURRENT_DATE AND estado NOT IN ('cancelada')
+       )`,
+      [psi.id],
+    );
+    const enRiesgo = await query(
+      `SELECT COUNT(*) as total FROM (
+         SELECT paciente_id, MAX(fecha) as ultima
+         FROM citas WHERE psicologo_id = $1
+         GROUP BY paciente_id
+         HAVING MAX(fecha) < CURRENT_DATE - INTERVAL '30 days'
+       ) sub
+       WHERE paciente_id NOT IN (
+         SELECT DISTINCT paciente_id FROM citas
+         WHERE psicologo_id = $1 AND fecha >= CURRENT_DATE AND estado NOT IN ('cancelada')
+       )`,
+      [psi.id],
+    );
+
+    resultado.push({
+      id: psi.id,
+      nombre: psi.nombre,
+      con_cita: parseInt(String(conCita.rows[0]?.total), 10) || 0,
+      en_seguimiento: parseInt(String(enSeguimiento.rows[0]?.total), 10) || 0,
+      en_riesgo: parseInt(String(enRiesgo.rows[0]?.total), 10) || 0,
+    });
+  }
+
+  return resultado;
+}
 
 export async function listAdminBlogArticles() {
   try {

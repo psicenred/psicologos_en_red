@@ -6,7 +6,7 @@ import {
   parseJsonBody,
 } from '@/lib/auth/api';
 import { ensureDb, loginWithCredentials } from '@/lib/auth/service';
-import { saveSessionOnResponse } from '@/lib/session';
+import { destroySessionOnResponse, saveSessionOnResponse } from '@/lib/session';
 
 export async function POST(request: Request) {
   if (!ensureDb()) return databaseUnavailableJson();
@@ -34,6 +34,7 @@ export async function POST(request: Request) {
       ok: true,
       redirect: loginRedirectPath(result.rol),
     });
+    await destroySessionOnResponse(request, response);
     await saveSessionOnResponse(request, response, result.usuario);
 
     return response;

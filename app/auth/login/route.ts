@@ -7,7 +7,7 @@ import {
   redirectAfterLogin,
 } from '@/lib/auth/api';
 import { ensureDb, loginWithCredentials } from '@/lib/auth/service';
-import { saveSessionOnResponse } from '@/lib/session';
+import { destroySessionOnResponse, saveSessionOnResponse } from '@/lib/session';
 
 export async function POST(request: Request) {
   if (!ensureDb()) return databaseUnavailableResponse();
@@ -46,6 +46,7 @@ export async function POST(request: Request) {
     }
 
     const response = redirectAfterLogin(result.rol, request.url);
+    await destroySessionOnResponse(request, response);
     await saveSessionOnResponse(request, response, result.usuario);
     return response;
   } catch (error) {
