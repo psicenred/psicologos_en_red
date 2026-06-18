@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePerfilMobileNav } from '@/lib/hooks/usePerfilMobileNav';
 import './perfil-legacy.css';
 
 type NavItem = {
@@ -31,6 +32,7 @@ export function PerfilShell({
   unreadCount?: number;
   children: React.ReactNode;
 }) {
+  const { navToggleRef, closeMobileNav } = usePerfilMobileNav();
   const inicial = (nombre || 'U').charAt(0).toUpperCase();
   const badgeLabel = unreadCount > 99 ? '99+' : String(unreadCount);
   const showBadge = unreadCount > 0;
@@ -41,6 +43,7 @@ export function PerfilShell({
         <header className="perfil-mobile-header">
           <span className="perfil-mobile-title">Mi Perfil</span>
           <input
+            ref={navToggleRef}
             type="checkbox"
             id="perfil-nav-toggle"
             className="perfil-nav-toggle"
@@ -63,7 +66,10 @@ export function PerfilShell({
                   <button
                     type="button"
                     className={`perfil-mobile-nav-btn${section === item.id ? ' active' : ''}`}
-                    onClick={() => onSectionChange(item.id)}
+                    onClick={() => {
+                      onSectionChange(item.id);
+                      closeMobileNav();
+                    }}
                   >
                     {item.icon} {item.label}
                     {item.id === 'chat' && showBadge ? (
@@ -73,12 +79,16 @@ export function PerfilShell({
                 </li>
               ))}
               <li>
-                <Link href="/" className="perfil-mobile-nav-link">
+                <Link href="/" className="perfil-mobile-nav-link" onClick={closeMobileNav}>
                   🌐 Volver al Sitio
                 </Link>
               </li>
               <li>
-                <Link href="/logout" className="perfil-mobile-nav-link perfil-mobile-logout">
+                <Link
+                  href="/logout"
+                  className="perfil-mobile-nav-link perfil-mobile-logout"
+                  onClick={closeMobileNav}
+                >
                   🚪 Cerrar Sesión
                 </Link>
               </li>

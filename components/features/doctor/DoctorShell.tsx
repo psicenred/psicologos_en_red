@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePerfilMobileNav } from '@/lib/hooks/usePerfilMobileNav';
 import '@/components/features/perfil/perfil-legacy.css';
 import './panel-doctor-legacy.css';
 
@@ -26,6 +27,7 @@ export function DoctorShell({
   unreadCount?: number;
   children: React.ReactNode;
 }) {
+  const { navToggleRef, closeMobileNav } = usePerfilMobileNav();
   const inicial = (nombre || 'E').charAt(0).toUpperCase();
   const badgeLabel = unreadCount > 99 ? '99+' : String(unreadCount);
   const showBadge = unreadCount > 0;
@@ -36,6 +38,7 @@ export function DoctorShell({
         <header className="perfil-mobile-header">
           <span className="perfil-mobile-title">Panel Especialista</span>
           <input
+            ref={navToggleRef}
             type="checkbox"
             id="perfil-nav-toggle"
             className="perfil-nav-toggle"
@@ -58,7 +61,10 @@ export function DoctorShell({
                   <button
                     type="button"
                     className={`perfil-mobile-nav-btn${section === item.id ? ' active' : ''}`}
-                    onClick={() => onSectionChange(item.id)}
+                    onClick={() => {
+                      onSectionChange(item.id);
+                      closeMobileNav();
+                    }}
                   >
                     {item.icon} {item.label}
                     {item.badge && showBadge ? (
@@ -68,12 +74,16 @@ export function DoctorShell({
                 </li>
               ))}
               <li>
-                <Link href="/" className="perfil-mobile-nav-link">
+                <Link href="/" className="perfil-mobile-nav-link" onClick={closeMobileNav}>
                   🌐 Volver al Sitio
                 </Link>
               </li>
               <li>
-                <Link href="/logout" className="perfil-mobile-nav-link perfil-mobile-logout">
+                <Link
+                  href="/logout"
+                  className="perfil-mobile-nav-link perfil-mobile-logout"
+                  onClick={closeMobileNav}
+                >
                   🚪 Cerrar Sesión
                 </Link>
               </li>

@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { usePerfilMobileNav } from '@/lib/hooks/usePerfilMobileNav';
 import './panel-admin-legacy.css';
 
 export const ADMIN_SECTION_TITLES: Record<string, string> = {
@@ -32,6 +33,7 @@ export function AdminShell({
   onSectionChange: (id: string) => void;
   children: React.ReactNode;
 }) {
+  const { navToggleRef, closeMobileNav } = usePerfilMobileNav();
   const [nombre, setNombre] = useState('A');
 
   useEffect(() => {
@@ -51,6 +53,7 @@ export function AdminShell({
         <header className="perfil-mobile-header">
           <span className="perfil-mobile-title">Panel Admin</span>
           <input
+            ref={navToggleRef}
             type="checkbox"
             id="perfil-nav-toggle"
             className="perfil-nav-toggle"
@@ -69,19 +72,26 @@ export function AdminShell({
                   <button
                     type="button"
                     className={`perfil-mobile-nav-btn${section === item.id ? ' active' : ''}`}
-                    onClick={() => onSectionChange(item.id)}
+                    onClick={() => {
+                      onSectionChange(item.id);
+                      closeMobileNav();
+                    }}
                   >
                     {item.icon} {item.label}
                   </button>
                 </li>
               ))}
               <li>
-                <Link href="/" className="perfil-mobile-nav-link">
+                <Link href="/" className="perfil-mobile-nav-link" onClick={closeMobileNav}>
                   🌐 Volver al Sitio
                 </Link>
               </li>
               <li>
-                <Link href="/logout" className="perfil-mobile-nav-link perfil-mobile-logout">
+                <Link
+                  href="/logout"
+                  className="perfil-mobile-nav-link perfil-mobile-logout"
+                  onClick={closeMobileNav}
+                >
                   🚪 Cerrar Sesión
                 </Link>
               </li>
