@@ -3,6 +3,7 @@
 .admin-container {
   display: flex;
   min-height: 100vh;
+  min-height: 100svh;
 }
 
 .admin-sidebar {
@@ -12,6 +13,7 @@
   padding: 20px 0;
   position: fixed;
   height: 100vh;
+  height: 100svh;
   overflow-y: auto;
   z-index: 100;
 }
@@ -87,6 +89,7 @@
   margin-left: 250px;
   background: #f5f6fa;
   min-height: 100vh;
+  min-height: 100svh;
 }
 
 .admin-header {
@@ -490,13 +493,9 @@
   padding: 4px;
 }
 
-/* Mobile nav (patrón perfil legacy) */
+/* Mobile layout (nav hamburguesa: perfil-legacy.css) */
 .perfil-body {
   margin: 0;
-}
-
-.perfil-mobile-header {
-  display: none;
 }
 
 @media (max-width: 768px) {
@@ -529,85 +528,6 @@
 
   .admin-table-container {
     padding: 16px;
-  }
-
-  .perfil-mobile-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
-    color: white;
-    position: sticky;
-    top: 0;
-    z-index: 200;
-  }
-
-  .perfil-mobile-title {
-    font-weight: 600;
-    font-size: 1rem;
-  }
-
-  .perfil-nav-toggle {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .perfil-nav-toggle-label {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    cursor: pointer;
-    padding: 8px;
-  }
-
-  .perfil-nav-toggle-label span {
-    display: block;
-    width: 24px;
-    height: 2px;
-    background: white;
-    border-radius: 2px;
-  }
-
-  .perfil-mobile-nav {
-    display: none;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: #16213e;
-    padding: 12px 0;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-  }
-
-  .perfil-nav-toggle:checked ~ .perfil-mobile-nav {
-    display: block;
-  }
-
-  .perfil-mobile-nav-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  .perfil-mobile-nav-btn,
-  .perfil-mobile-nav-link {
-    display: block;
-    width: 100%;
-    padding: 12px 20px;
-    text-align: left;
-    background: none;
-    border: none;
-    color: rgba(255, 255, 255, 0.85);
-    text-decoration: none;
-    font: inherit;
-    cursor: pointer;
-  }
-
-  .perfil-mobile-nav-btn.active {
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
   }
 
   .admin-header .btn-logout {

@@ -27,7 +27,7 @@ export function DoctorShell({
   unreadCount?: number;
   children: React.ReactNode;
 }) {
-  const { navToggleRef, closeMobileNav } = usePerfilMobileNav();
+  const { navToggleRef, closeMobileNav, onNavToggleChange } = usePerfilMobileNav();
   const inicial = (nombre || 'E').charAt(0).toUpperCase();
   const badgeLabel = unreadCount > 99 ? '99+' : String(unreadCount);
   const showBadge = unreadCount > 0;
@@ -44,6 +44,7 @@ export function DoctorShell({
             className="perfil-nav-toggle"
             aria-hidden="true"
             tabIndex={-1}
+            onChange={onNavToggleChange}
           />
           <label
             htmlFor="perfil-nav-toggle"

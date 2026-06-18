@@ -4,12 +4,14 @@
   margin: 0;
   overflow: hidden;
   min-height: 100vh;
+  min-height: 100svh;
   background: var(--fondo-hueso);
 }
 
 .perfil-layout {
   display: flex;
   height: 100vh;
+  height: 100svh;
 }
 
 .perfil-sidebar {
@@ -979,6 +981,7 @@
     right: 0;
     width: min(280px, 85vw);
     height: 100vh;
+    height: 100svh;
     background: var(--blanco);
     box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
     padding: 80px 24px 24px;
@@ -1044,6 +1047,7 @@
 
   .perfil-main {
     min-height: 100vh;
+    min-height: 100svh;
     box-sizing: border-box;
     padding: calc(120px + env(safe-area-inset-top, 0px)) 30px
       calc(100px + env(safe-area-inset-bottom, 0px)) 30px;

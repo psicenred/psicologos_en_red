@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { usePerfilMobileNav } from '@/lib/hooks/usePerfilMobileNav';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/routing';
@@ -39,7 +40,7 @@ function NavLanguageSwitcher({ onChange }: { onChange?: () => void }) {
 export function SiteHeader() {
   const t = useTranslations('nav');
   const pathname = usePathname();
-  const navToggleRef = useRef<HTMLInputElement>(null);
+  const { navToggleRef, closeMobileNav, onNavToggleChange } = usePerfilMobileNav();
   const [session, setSession] = useState<SessionState>({ autenticado: false });
 
   const NAV: { href: string; label: string; hideInPwa?: boolean }[] = [
@@ -70,12 +71,8 @@ export function SiteHeader() {
   }, []);
 
   useEffect(() => {
-    if (navToggleRef.current) navToggleRef.current.checked = false;
-  }, [pathname]);
-
-  function closeMobileNav() {
-    if (navToggleRef.current) navToggleRef.current.checked = false;
-  }
+    closeMobileNav();
+  }, [pathname, closeMobileNav]);
 
   const perfilHref =
     session.rol === 'psicologo'
@@ -105,6 +102,7 @@ export function SiteHeader() {
         className="nav-toggle"
         aria-hidden="true"
         tabIndex={-1}
+        onChange={onNavToggleChange}
       />
       <label htmlFor="nav-toggle" className="nav-toggle-label" aria-label={t('menu')}>
         <span />

@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { usePerfilMobileNav } from '@/lib/hooks/usePerfilMobileNav';
+import '@/components/features/perfil/perfil-legacy.css';
 import './panel-admin-legacy.css';
 
 export const ADMIN_SECTION_TITLES: Record<string, string> = {
@@ -33,7 +34,7 @@ export function AdminShell({
   onSectionChange: (id: string) => void;
   children: React.ReactNode;
 }) {
-  const { navToggleRef, closeMobileNav } = usePerfilMobileNav();
+  const { navToggleRef, closeMobileNav, onNavToggleChange } = usePerfilMobileNav();
   const [nombre, setNombre] = useState('A');
 
   useEffect(() => {
@@ -59,6 +60,7 @@ export function AdminShell({
             className="perfil-nav-toggle"
             aria-hidden="true"
             tabIndex={-1}
+            onChange={onNavToggleChange}
           />
           <label htmlFor="perfil-nav-toggle" className="perfil-nav-toggle-label" aria-label="Abrir menú">
             <span />

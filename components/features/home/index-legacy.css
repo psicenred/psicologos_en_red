@@ -2,6 +2,7 @@
 .hero.hero-modern {
  position: relative;
  min-height: 100vh;
+ min-height: 100svh;
  padding: 0 5%;
  display: flex;
  flex-direction: column;
@@ -1243,6 +1244,7 @@ a.servicio-card-modern:hover .servicio-card-link {
 }
 .testimonio-rotador-card {
   transition: opacity 0.5s ease;
+  min-height: 280px;
 }
 .testimonio-rotador-card.fade-out {
   opacity: 0;

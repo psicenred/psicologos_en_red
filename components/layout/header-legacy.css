@@ -140,6 +140,7 @@ body.pwa-standalone .nav-hide-in-pwa {
     right: 0;
     width: min(280px, 85vw);
     height: 100vh;
+    height: 100svh;
     background: var(--blanco);
     box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
     padding: 80px 24px 24px;
