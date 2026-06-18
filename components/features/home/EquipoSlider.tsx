@@ -19,66 +19,44 @@ function shortName(full: string) {
   return full || '—';
 }
 
-function itemsToShowForWidth(width: number, slideCount: number) {
-  if (width <= 768) return Math.min(2, slideCount);
-  if (width <= 992) return Math.min(3, slideCount);
-  return Math.min(4, slideCount);
-}
-
 export function EquipoSlider() {
   const t = useTranslations('home');
   const [list, setList] = useState<Psicologo[]>([]);
-  const [itemsToShow, setItemsToShow] = useState(4);
   const containerRef = useRef<HTMLDivElement>(null);
   const indexRef = useRef(0);
+  const setupRef = useRef(false);
 
   useEffect(() => {
     fetchJsonArray<Psicologo>('/api/psicologos').then(({ data }) => setList(data));
   }, []);
 
   useEffect(() => {
-    function updateItemsToShow() {
-      setItemsToShow(itemsToShowForWidth(window.innerWidth, Math.max(list.length, 1)));
-    }
-    updateItemsToShow();
-    window.addEventListener('resize', updateItemsToShow);
-    return () => window.removeEventListener('resize', updateItemsToShow);
-  }, [list.length]);
-
-  useEffect(() => {
-    if (list.length === 0) return;
+    if (list.length === 0 || setupRef.current) return;
     const sliderEl = containerRef.current;
     if (!sliderEl) return;
 
-    const visible = itemsToShowForWidth(window.innerWidth, list.length);
-    indexRef.current = visible;
-
-    let cleanup: (() => void) | undefined;
-
     const timer = setTimeout(() => {
-      const root: HTMLDivElement = sliderEl;
-
+      const container = sliderEl;
       const slides = Array.from(
-        root.querySelectorAll(':scope > .equipo-slide:not([data-clone="1"])'),
+        container.querySelectorAll(':scope > .equipo-slide'),
       ) as HTMLElement[];
       if (slides.length === 0) return;
 
-      root.querySelectorAll(':scope > .equipo-slide[data-clone="1"]').forEach((n) => n.remove());
+      setupRef.current = true;
+      const itemsToShow = Math.min(4, slides.length);
+      indexRef.current = itemsToShow;
 
-      for (let i = 0; i < visible; i++) {
-        const startClone = slides[i].cloneNode(true) as HTMLElement;
-        startClone.setAttribute('data-clone', '1');
-        root.appendChild(startClone);
-        const endClone = slides[slides.length - 1 - (i % slides.length)].cloneNode(
-          true,
-        ) as HTMLElement;
-        endClone.setAttribute('data-clone', '1');
-        root.insertBefore(endClone, slides[0]);
+      for (let i = 0; i < itemsToShow; i++) {
+        container.appendChild(slides[i].cloneNode(true));
+        container.insertBefore(
+          slides[slides.length - 1 - (i % slides.length)].cloneNode(true),
+          slides[0],
+        );
       }
 
       function allSlides() {
         return Array.from(
-          root.querySelectorAll(':scope > .equipo-slide'),
+          container.querySelectorAll(':scope > .equipo-slide'),
         ) as HTMLElement[];
       }
 
@@ -86,8 +64,9 @@ export function EquipoSlider() {
         const nodes = allSlides();
         if (!nodes[0]) return;
         const slideWidth = nodes[0].offsetWidth;
-        root.style.transition = smooth ? 'transform 0.5s ease-in-out' : 'none';
-        root.style.transform = `translateX(${-indexRef.current * slideWidth}px)`;
+        if (slideWidth <= 0) return;
+        container.style.transition = smooth ? 'transform 0.5s ease-in-out' : 'none';
+        container.style.transform = `translateX(${-indexRef.current * slideWidth}px)`;
       }
 
       updateSlider(false);
@@ -96,9 +75,9 @@ export function EquipoSlider() {
         const nodes = allSlides();
         indexRef.current += 1;
         updateSlider(true);
-        if (indexRef.current >= nodes.length - visible) {
+        if (indexRef.current >= nodes.length - itemsToShow) {
           setTimeout(() => {
-            indexRef.current = visible;
+            indexRef.current = itemsToShow;
             updateSlider(false);
           }, 500);
         }
@@ -111,26 +90,20 @@ export function EquipoSlider() {
       };
       const onResize = () => updateSlider(false);
 
-      root.addEventListener('mouseenter', onEnter);
-      root.addEventListener('mouseleave', onLeave);
+      container.addEventListener('mouseenter', onEnter);
+      container.addEventListener('mouseleave', onLeave);
       window.addEventListener('resize', onResize);
 
-      cleanup = () => {
+      return () => {
         clearInterval(autoPlay);
-        root.removeEventListener('mouseenter', onEnter);
-        root.removeEventListener('mouseleave', onLeave);
+        container.removeEventListener('mouseenter', onEnter);
+        container.removeEventListener('mouseleave', onLeave);
         window.removeEventListener('resize', onResize);
-        root.querySelectorAll(':scope > .equipo-slide[data-clone="1"]').forEach((n) => n.remove());
-        root.style.transform = '';
-        root.style.transition = '';
       };
-    }, 150);
+    }, 200);
 
-    return () => {
-      clearTimeout(timer);
-      cleanup?.();
-    };
-  }, [list, itemsToShow]);
+    return () => clearTimeout(timer);
+  }, [list]);
 
   if (list.length === 0) return null;
 
@@ -141,10 +114,7 @@ export function EquipoSlider() {
       </h2>
       <div
         className="equipo-slider-viewport"
-        style={{
-          ['--equipo-num-slides' as string]: String(list.length),
-          ['--equipo-items-visible' as string]: String(itemsToShow),
-        }}
+        style={{ ['--equipo-num-slides' as string]: String(list.length) }}
       >
         <div ref={containerRef} className="equipo-slider-container">
           {list.map((p) => {

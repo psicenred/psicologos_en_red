@@ -72,6 +72,10 @@ export function SiteHeader() {
         <span>Psicólogos en Red</span>
       </Link>
 
+      <div className="header-lang-flags">
+        <LanguageSwitcher onChange={closeMobileNav} />
+      </div>
+
       <input
         ref={navToggleRef}
         type="checkbox"

@@ -92,6 +92,9 @@
   background: var(--blanco);
   cursor: pointer;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+  text-decoration: none;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .lang-flag-btn:hover {
@@ -115,6 +118,35 @@
 html.pwa-standalone .nav-hide-in-pwa,
 body.pwa-standalone .nav-hide-in-pwa {
   display: none !important;
+}
+
+.header-lang-flags {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .header-lang-flags {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    margin-right: 0.75rem;
+    z-index: 1002;
+  }
+
+  .main-nav .nav-lang-item {
+    display: none;
+  }
+}
+
+@media (min-width: 769px) {
+  .header-lang-flags {
+    display: none;
+  }
+
+  .main-nav .nav-lang-item {
+    display: flex;
+    align-items: center;
+  }
 }
 
 .nav-toggle {

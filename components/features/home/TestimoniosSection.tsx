@@ -62,24 +62,6 @@ function shuffle<T>(arr: T[]) {
   return a;
 }
 
-function TestimonioCardContent({ item }: { item: Testimonio }) {
-  return (
-    <>
-      <div className="testimonio-stars">{stars(item.valoracion)}</div>
-      <p className="testimonio-quote">{item.comentario}</p>
-      <div className="testimonio-author">
-        <div className="testimonio-avatar testimonio-avatar-rosa">{initial(item.nombre)}</div>
-        <div className="testimonio-info">
-          <strong className="testimonio-name">
-            {initial(item.nombre) !== '—' ? `${initial(item.nombre)}.` : '—'}
-          </strong>
-          <span>{formatRole(item.rol)}</span>
-        </div>
-      </div>
-    </>
-  );
-}
-
 export function TestimoniosSection() {
   const t = useTranslations('home');
   const [items, setItems] = useState<Testimonio[]>([]);
@@ -89,37 +71,26 @@ export function TestimoniosSection() {
     FALLBACK[2],
   ]);
   const [fading, setFading] = useState<[boolean, boolean, boolean]>([false, false, false]);
-  const [cardMinHeight, setCardMinHeight] = useState(280);
   const indicesRef = useRef([0, 0, 0]);
-  const measureRef = useRef<HTMLDivElement>(null);
-
-  const sourceList = items.length ? items : FALLBACK;
+  const listRef = useRef<Testimonio[]>(FALLBACK);
 
   useEffect(() => {
     fetchJsonArray<Testimonio>('/api/testimonios-encuesta').then(({ data }) => {
       if (data.length > 0) {
-        setItems(shuffle(data).slice(0, 9));
+        const next = shuffle(data).slice(0, 9);
+        listRef.current = next;
+        setItems(next);
       }
     });
   }, []);
 
   useEffect(() => {
-    const measureEl = measureRef.current;
-    if (!measureEl) return;
-
-    const cards = measureEl.querySelectorAll('.testimonio-measure-card');
-    let max = 280;
-    cards.forEach((node) => {
-      max = Math.max(max, (node as HTMLElement).offsetHeight);
-    });
-    setCardMinHeight(max);
-  }, [items]);
-
-  useEffect(() => {
-    const list = sourceList;
+    const list = listRef.current;
 
     function renderBlock(blockIndex: number) {
       const listLen = list.length;
+      if (listLen === 0) return;
+
       indicesRef.current[blockIndex] =
         ((indicesRef.current[blockIndex] % listLen) + listLen) % listLen;
       const item = list[indicesRef.current[blockIndex]];
@@ -130,7 +101,7 @@ export function TestimoniosSection() {
         return next;
       });
 
-      setTimeout(() => {
+      window.setTimeout(() => {
         setDisplay((prev) => {
           const next = [...prev] as [Testimonio, Testimonio, Testimonio];
           next[blockIndex] = item;
@@ -166,28 +137,23 @@ export function TestimoniosSection() {
       <span className="subtitulo">{t('testimonialsSub')}</span>
       <h2 className="index-section-title">{t('testimonialsTitle')}</h2>
       <p className="index-section-desc">{t('testimonialsDesc')}</p>
-
-      <div ref={measureRef} className="testimonio-measure-wrap" aria-hidden="true">
-        {sourceList.map((item, i) => (
-          <div
-            key={`measure-${i}`}
-            className="testimonio-card index-testimonio-v2 testimonio-measure-card"
-          >
-            <TestimonioCardContent item={item} />
-          </div>
-        ))}
-      </div>
-
-      <div
-        className="testimonios-container index-testimonios-cards testimonios-triple-wrap"
-        style={{ ['--testimonio-card-min-height' as string]: `${cardMinHeight}px` }}
-      >
+      <div className="testimonios-container index-testimonios-cards testimonios-triple-wrap">
         {display.map((item, i) => (
           <div
-            key={i}
+            key={`${i}-${item.nombre}-${item.comentario.slice(0, 24)}`}
             className={`testimonio-card index-testimonio-v2 testimonio-rotador-card${fading[i] ? ' fade-out' : ''}`}
           >
-            <TestimonioCardContent item={item} />
+            <div className="testimonio-stars">{stars(item.valoracion)}</div>
+            <p className="testimonio-quote">{item.comentario}</p>
+            <div className="testimonio-author">
+              <div className="testimonio-avatar testimonio-avatar-rosa">{initial(item.nombre)}</div>
+              <div className="testimonio-info">
+                <strong className="testimonio-name">
+                  {initial(item.nombre) !== '—' ? `${initial(item.nombre)}.` : '—'}
+                </strong>
+                <span>{formatRole(item.rol)}</span>
+              </div>
+            </div>
           </div>
         ))}
       </div>

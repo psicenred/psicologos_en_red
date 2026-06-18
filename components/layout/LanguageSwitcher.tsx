@@ -1,7 +1,7 @@
 'use client';
 
 import { useLocale, useTranslations } from 'next-intl';
-import { usePathname, useRouter } from '@/i18n/routing';
+import { Link, usePathname } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 import type { Locale } from '@/i18n/routing';
 
@@ -44,15 +44,8 @@ export function LanguageSwitcher({
   onChange?: () => void;
 }) {
   const locale = useLocale() as Locale;
-  const router = useRouter();
   const pathname = usePathname();
   const t = useTranslations('nav');
-
-  function select(next: Locale) {
-    if (next === locale) return;
-    router.replace(pathname, { locale: next });
-    onChange?.();
-  }
 
   return (
     <div
@@ -62,18 +55,32 @@ export function LanguageSwitcher({
     >
       {LOCALES.map(({ code, label, Flag }) => {
         const active = locale === code;
+        if (active) {
+          return (
+            <span
+              key={code}
+              className={cn('lang-flag-btn lang-flag-btn-active')}
+              aria-label={label}
+              aria-current="true"
+              title={label}
+            >
+              <Flag className="lang-flag-icon" />
+            </span>
+          );
+        }
+
         return (
-          <button
+          <Link
             key={code}
-            type="button"
-            className={cn('lang-flag-btn', active && 'lang-flag-btn-active')}
+            href={pathname}
+            locale={code}
+            className="lang-flag-btn"
             aria-label={label}
-            aria-pressed={active}
             title={label}
-            onClick={() => select(code)}
+            onClick={onChange}
           >
             <Flag className="lang-flag-icon" />
-          </button>
+          </Link>
         );
       })}
     </div>
