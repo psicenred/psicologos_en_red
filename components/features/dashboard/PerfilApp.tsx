@@ -11,6 +11,7 @@ import {
   PerfilVideoSection,
 } from '@/components/features/perfil/PerfilSections';
 import { type CitaPaciente } from '@/components/features/perfil/perfil-helpers';
+import { mensajesNoLeidosAction } from '@/lib/chat/actions';
 import { fetchApiList, networkErrorMessage } from '@/lib/fetch-api';
 import { useDailyCall } from '@/lib/hooks/useDailyCall';
 
@@ -50,8 +51,8 @@ export function PerfilApp() {
   const { data: unread = { count: 0 } } = useQuery({
     queryKey: ['mensajes-no-leidos'],
     queryFn: async () => {
-      const res = await fetch('/api/mensajes-no-leidos');
-      return res.ok ? res.json() : { count: 0 };
+      const result = await mensajesNoLeidosAction();
+      return result.ok ? result.data : { count: 0 };
     },
     refetchInterval: 30_000,
   });

@@ -6,7 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { fetchApiList, fetchJson, networkErrorMessage } from '@/lib/fetch-api';
+import {
+  enviarAdjuntoChatAction,
+  enviarMensajeAction,
+  loadMensajesAction,
+  mensajesNoLeidosPorContactoAction,
+} from '@/lib/chat/actions';
+import { fetchApiList, networkErrorMessage } from '@/lib/fetch-api';
 
 type Contacto = { id: number; nombre: string };
 
@@ -19,22 +25,15 @@ type Mensaje = {
   fecha_envio?: string;
 };
 
-type MensajesResponse = {
-  mensajes?: Mensaje[];
-  miId?: number;
-};
-
 function mapContacto(raw: Contacto & { usuario_id?: number }): Contacto {
   const id = Number(raw.usuario_id ?? raw.id);
   return { id, nombre: raw.nombre };
 }
 
 async function fetchUnreadByContact(): Promise<Record<string, number>> {
-  const { data, error } = await fetchJson<Record<string, number>>(
-    '/api/mensajes-no-leidos-por-contacto',
-  );
-  if (error) return {};
-  return data ?? {};
+  const result = await mensajesNoLeidosPorContactoAction();
+  if (!result.ok) return {};
+  return result.data;
 }
 
 export function PrivateChat({
@@ -95,14 +94,14 @@ export function PrivateChat({
   const loadMensajes = useCallback(
     async (destId: number) => {
       setMsgError(null);
-      const { data, error } = await fetchJson<MensajesResponse>(`/api/mensajes/${destId}`);
-      if (error) {
-        setMsgError(networkErrorMessage(error));
+      const result = await loadMensajesAction(destId);
+      if (!result.ok) {
+        setMsgError(result.error);
         setMensajes([]);
         return;
       }
-      setMensajes(data?.mensajes ?? []);
-      setMiId(data?.miId ?? null);
+      setMensajes(result.data.mensajes ?? []);
+      setMiId(result.data.miId ?? null);
       queryClient.invalidateQueries({ queryKey: ['mensajes-no-leidos-por-contacto'] });
     },
     [queryClient],
@@ -117,13 +116,9 @@ export function PrivateChat({
     setSending(true);
     setMsgError(null);
     try {
-      const { error } = await fetchJson('/api/enviar-mensaje', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ destinatarioId: chatId, contenido: nuevoMsg }),
-      });
-      if (error) {
-        setMsgError(networkErrorMessage(error));
+      const result = await enviarMensajeAction(chatId, nuevoMsg);
+      if (!result.ok) {
+        setMsgError(result.error);
         return;
       }
       setNuevoMsg('');
@@ -141,12 +136,9 @@ export function PrivateChat({
     setSending(true);
     setMsgError(null);
     try {
-      const { error } = await fetchJson('/api/chat/adjunto', {
-        method: 'POST',
-        body: form,
-      });
-      if (error) {
-        setMsgError(networkErrorMessage(error));
+      const result = await enviarAdjuntoChatAction(form);
+      if (!result.ok) {
+        setMsgError(result.error);
         return;
       }
       await loadMensajes(chatId);

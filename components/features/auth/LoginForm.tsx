@@ -7,6 +7,7 @@ import { Link } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { loginAction } from '@/lib/auth/actions';
 import { loginSchema } from '@/lib/schemas/auth';
 
 type LoginApiError =
@@ -36,9 +37,13 @@ function mapLoginApiError(code: string | undefined, t: (key: string) => string):
   }
 }
 
-function safeRedirectPath(next: string | null, fallback: string): string {
-  if (!next || !next.startsWith('/') || next.startsWith('//')) return fallback;
-  return next;
+function isNextRedirect(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'digest' in error &&
+    String((error as { digest: string }).digest).startsWith('NEXT_REDIRECT')
+  );
 }
 
 export function LoginForm() {
@@ -78,40 +83,26 @@ export function LoginForm() {
     }
 
     setSubmitting(true);
+    setIsRedirecting(true);
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: parsed.data.email.toLowerCase(),
-          password: parsed.data.password,
-        }),
-        credentials: 'same-origin',
-      });
+      const payload = new FormData(form);
+      payload.set('email', parsed.data.email.toLowerCase());
+      payload.set('password', parsed.data.password);
+      const next = searchParams.get('next') || searchParams.get('redirect');
+      if (next) payload.set('next', next);
 
-      const payload = (await res.json().catch(() => null)) as {
-        ok?: boolean;
-        redirect?: string;
-        error?: string;
-      } | null;
-
-      if (res.ok && payload?.ok) {
-        setIsRedirecting(true);
-        const next = safeRedirectPath(
-          searchParams.get('next') || searchParams.get('redirect'),
-          payload.redirect || '/perfil',
-        );
-        window.location.assign(next);
-        return;
+      const result = await loginAction(payload);
+      if (result?.error) {
+        setIsRedirecting(false);
+        if (result.error === 'db_unavailable') {
+          setError(t('dbUnavailable'));
+        } else {
+          setError(mapLoginApiError(result.error, t));
+        }
       }
-
-      if (res.status === 503) {
-        setError(t('dbUnavailable'));
-        return;
-      }
-
-      setError(mapLoginApiError(payload?.error, t));
-    } catch {
+    } catch (err) {
+      if (isNextRedirect(err)) return;
+      setIsRedirecting(false);
       setError(t('connectionError'));
     } finally {
       setSubmitting(false);
