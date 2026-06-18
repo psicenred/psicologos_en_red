@@ -323,12 +323,12 @@
 
 @media (max-width: 768px) {
  .catalogo-section-wrap {
- padding-left: 1rem;
- padding-right: 2.5rem;
+ padding-left: 1.25rem;
+ padding-right: 1.25rem;
  }
  .catalogo-grid-modern {
+ grid-template-columns: minmax(0, 1fr);
  justify-items: center;
- transform: translateX(-0.75rem);
  }
  .catalogo-grid-modern .psico-card-modern {
  max-width: 318px;
