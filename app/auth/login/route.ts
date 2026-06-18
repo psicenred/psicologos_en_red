@@ -7,7 +7,7 @@ import {
   redirectAfterLogin,
 } from '@/lib/auth/api';
 import { ensureDb, loginWithCredentials } from '@/lib/auth/service';
-import { setSessionUsuario } from '@/lib/session';
+import { saveSessionOnResponse } from '@/lib/session';
 
 export async function POST(request: Request) {
   if (!ensureDb()) return databaseUnavailableResponse();
@@ -45,8 +45,9 @@ export async function POST(request: Request) {
       return authHtmlResponse('Contraseña incorrecta. <a href="/login">Volver</a>', 401);
     }
 
-    await setSessionUsuario(result.usuario);
-    return redirectAfterLogin(result.rol, request.url);
+    const response = redirectAfterLogin(result.rol, request.url);
+    await saveSessionOnResponse(request, response, result.usuario);
+    return response;
   } catch (error) {
     console.error('POST /auth/login:', error);
     return authHtmlResponse('Error en el servidor', 500);

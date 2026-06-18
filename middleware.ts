@@ -20,39 +20,8 @@ function isProtectedPath(pathname: string): boolean {
   );
 }
 
-async function checkAuth(request: NextRequest): Promise<NextResponse | null> {
-  const barePath = stripLocalePrefix(request.nextUrl.pathname);
-  const response = NextResponse.next();
-  const session = await getIronSession<SessionData>(
-    request,
-    response,
-    getSessionOptions(),
-  );
-
-  if (!session.usuario) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('next', barePath);
-    const status = request.method === 'POST' ? 303 : 307;
-    return NextResponse.redirect(loginUrl, status);
-  }
-
-  const rol = normalizeRol(session.usuario.rol);
-
-  if (barePath.startsWith('/panel-admin') && rol !== 'admin') {
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-
-  if (barePath.startsWith('/panel-doctor') && rol !== 'psicologo') {
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-
-  return null;
-}
-
-export async function middleware(request: NextRequest) {
-  const pathname = request.nextUrl.pathname;
-
-  if (
+function shouldSkipMiddleware(pathname: string): boolean {
+  return (
     pathname.startsWith('/api') ||
     pathname.startsWith('/auth') ||
     pathname.startsWith('/_next') ||
@@ -61,16 +30,46 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/verificar-email') ||
     pathname.startsWith('/reenviar-verificacion') ||
     /\.[^/]+$/.test(pathname)
-  ) {
+  );
+}
+
+export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  if (shouldSkipMiddleware(pathname)) {
     return NextResponse.next();
   }
 
+  const intlResponse = intlMiddleware(request);
+  const response = intlResponse ?? NextResponse.next();
+
+  const session = await getIronSession<SessionData>(
+    request,
+    response,
+    getSessionOptions(),
+  );
+
   if (isProtectedPath(pathname)) {
-    const authRedirect = await checkAuth(request);
-    if (authRedirect) return authRedirect;
+    const barePath = stripLocalePrefix(pathname);
+
+    if (!session.usuario) {
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('next', barePath);
+      return NextResponse.redirect(loginUrl, 307);
+    }
+
+    const rol = normalizeRol(session.usuario.rol);
+
+    if (barePath.startsWith('/panel-admin') && rol !== 'admin') {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+
+    if (barePath.startsWith('/panel-doctor') && rol !== 'psicologo') {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
   }
 
-  return intlMiddleware(request);
+  return response;
 }
 
 export const config = {

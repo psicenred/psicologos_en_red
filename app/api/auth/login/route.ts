@@ -6,7 +6,7 @@ import {
   parseJsonBody,
 } from '@/lib/auth/api';
 import { ensureDb, loginWithCredentials } from '@/lib/auth/service';
-import { setSessionUsuario } from '@/lib/session';
+import { saveSessionOnResponse } from '@/lib/session';
 
 export async function POST(request: Request) {
   if (!ensureDb()) return databaseUnavailableJson();
@@ -30,12 +30,13 @@ export async function POST(request: Request) {
       );
     }
 
-    await setSessionUsuario(result.usuario);
-
-    return NextResponse.json({
+    const response = NextResponse.json({
       ok: true,
       redirect: loginRedirectPath(result.rol),
     });
+    await saveSessionOnResponse(request, response, result.usuario);
+
+    return response;
   } catch (error) {
     console.error('POST /api/auth/login:', error);
     return NextResponse.json({ error: 'server_error' }, { status: 500 });

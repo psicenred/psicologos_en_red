@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 import {
   getSession,
+  getSessionFromRequest,
   setSessionUsuario,
   updateSessionNombre,
   type SessionUsuario,
 } from '@/lib/session';
 import { getPsicologoIdFromUsuarioId } from '@/lib/psicologo/id';
 
-export async function getAuthUsuario(): Promise<SessionUsuario | null> {
-  const session = await getSession();
+export async function getAuthUsuario(request?: Request): Promise<SessionUsuario | null> {
+  const session = request ? await getSessionFromRequest(request) : await getSession();
   return session.usuario ?? null;
 }
 
@@ -25,10 +26,10 @@ export function redirectToLogin(requestUrl: string) {
   return redirectGet(new URL('/login', requestUrl));
 }
 
-export async function requireAuthUsuario(): Promise<
-  SessionUsuario | NextResponse
-> {
-  const usuario = await getAuthUsuario();
+export async function requireAuthUsuario(
+  request?: Request,
+): Promise<SessionUsuario | NextResponse> {
+  const usuario = await getAuthUsuario(request);
   if (!usuario) return unauthorizedJson();
   return usuario;
 }
@@ -128,27 +129,31 @@ export function forbiddenJson(message = 'No autorizado') {
   return NextResponse.json({ error: message }, { status: 403 });
 }
 
-export async function requireAdmin(): Promise<SessionUsuario | NextResponse> {
-  const usuario = await getAuthUsuario();
+export async function requireAdmin(
+  request?: Request,
+): Promise<SessionUsuario | NextResponse> {
+  const usuario = await getAuthUsuario(request);
   if (!usuario) return unauthorizedJson();
   if (normalizeRol(usuario.rol) !== 'admin') return forbiddenJson('Solo administradores');
   return usuario;
 }
 
-export async function requirePsicologo(): Promise<
-  SessionUsuario | NextResponse
-> {
-  const usuario = await getAuthUsuario();
+export async function requirePsicologo(
+  request?: Request,
+): Promise<SessionUsuario | NextResponse> {
+  const usuario = await getAuthUsuario(request);
   if (!usuario) return unauthorizedJson();
   if (normalizeRol(usuario.rol) !== 'psicologo') return forbiddenJson('Acceso denegado');
   return usuario;
 }
 
 /** Psicólogo autenticado + id en tabla psicologos. */
-export async function requirePsicologoId(): Promise<
+export async function requirePsicologoId(
+  request?: Request,
+): Promise<
   { usuario: SessionUsuario; psicologoId: number } | NextResponse
 > {
-  const auth = await requirePsicologo();
+  const auth = await requirePsicologo(request);
   if (auth instanceof NextResponse) return auth;
   const psicologoId = await getPsicologoIdFromUsuarioId(auth.id);
   if (!psicologoId) {

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { destroySession } from '@/lib/session';
+import { destroySessionOnResponse } from '@/lib/session';
 
 export async function GET(request: Request) {
-  await destroySession();
-  return NextResponse.redirect(new URL('/login', request.url));
+  const response = NextResponse.redirect(new URL('/login', request.url));
+  await destroySessionOnResponse(request, response);
+  return response;
 }

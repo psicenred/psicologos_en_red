@@ -1,5 +1,6 @@
 import { getIronSession, type SessionOptions } from 'iron-session';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
+import { NextResponse } from 'next/server';
 
 export interface SessionUsuario {
   id: number;
@@ -43,12 +44,49 @@ export function getSessionOptions(): SessionOptions {
       secure: isProduction,
       sameSite: 'lax',
       httpOnly: true,
+      path: '/',
     },
   };
 }
 
+async function readSessionFromRequest(request: Request) {
+  return getIronSession<SessionData>(request, new NextResponse(), getSessionOptions());
+}
+
 export async function getSession() {
-  return getIronSession<SessionData>(await cookies(), getSessionOptions());
+  const options = getSessionOptions();
+  const cookieStore = await cookies();
+  const session = await getIronSession<SessionData>(cookieStore, options);
+  if (session.usuario) return session;
+
+  const headerStore = await headers();
+  const cookieHeader = headerStore.get('cookie');
+  if (!cookieHeader) return session;
+
+  const request = new Request('https://psicologosenred.local', {
+    headers: { cookie: cookieHeader },
+  });
+  return readSessionFromRequest(request);
+}
+
+export async function getSessionFromRequest(request: Request) {
+  return readSessionFromRequest(request);
+}
+
+/** Guarda la sesión en la misma respuesta que se devuelve al cliente (login/logout). */
+export async function saveSessionOnResponse(
+  request: Request,
+  response: NextResponse,
+  usuario: SessionUsuario,
+) {
+  const session = await getIronSession<SessionData>(request, response, getSessionOptions());
+  session.usuario = usuario;
+  await session.save();
+}
+
+export async function destroySessionOnResponse(request: Request, response: NextResponse) {
+  const session = await getIronSession<SessionData>(request, response, getSessionOptions());
+  session.destroy();
 }
 
 export async function setSessionUsuario(usuario: SessionUsuario) {
