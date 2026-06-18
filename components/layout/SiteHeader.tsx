@@ -5,8 +5,7 @@ import { usePerfilMobileNav } from '@/lib/hooks/usePerfilMobileNav';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/routing';
-import { useLocale } from 'next-intl';
-import { useRouter } from '@/i18n/routing';
+import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 import './header-legacy.css';
 
 type SessionState = {
@@ -14,28 +13,6 @@ type SessionState = {
   nombre?: string;
   rol?: string;
 };
-
-function NavLanguageSwitcher({ onChange }: { onChange?: () => void }) {
-  const locale = useLocale();
-  const router = useRouter();
-  const pathname = usePathname();
-  const t = useTranslations('nav');
-
-  return (
-    <select
-      aria-label={t('language')}
-      className="nav-lang-select"
-      value={locale}
-      onChange={(e) => {
-        router.replace(pathname, { locale: e.target.value });
-        onChange?.();
-      }}
-    >
-      <option value="es">ES</option>
-      <option value="en">EN</option>
-    </select>
-  );
-}
 
 export function SiteHeader() {
   const t = useTranslations('nav');
@@ -120,7 +97,7 @@ export function SiteHeader() {
             </li>
           ))}
           <li className="nav-lang-item nav-hide-in-pwa">
-            <NavLanguageSwitcher onChange={closeMobileNav} />
+            <LanguageSwitcher onChange={closeMobileNav} />
           </li>
           <li>
             <Link href={perfilHref} className="btn-perfil" onClick={closeMobileNav}>

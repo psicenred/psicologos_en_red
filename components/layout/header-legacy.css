@@ -69,21 +69,47 @@
   filter: brightness(0.95);
 }
 
-.nav-lang-item .nav-lang-select {
-  border: 1px solid var(--suave-arena);
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--texto-oscuro);
-  background: var(--blanco);
-  cursor: pointer;
+.nav-lang-item {
+  display: flex;
+  align-items: center;
 }
 
-@media (min-width: 769px) {
-  .nav-lang-item {
-    display: none;
-  }
+.lang-flag-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lang-flag-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 28px;
+  padding: 2px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: var(--blanco);
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.lang-flag-btn:hover {
+  border-color: var(--suave-arena);
+  transform: translateY(-1px);
+}
+
+.lang-flag-btn-active {
+  border-color: var(--primario-rosa);
+  box-shadow: 0 0 0 2px rgba(237, 135, 175, 0.25);
+}
+
+.lang-flag-icon {
+  width: 28px;
+  height: auto;
+  border-radius: 3px;
+  display: block;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
 html.pwa-standalone .nav-hide-in-pwa,
@@ -176,6 +202,7 @@ body.pwa-standalone .nav-hide-in-pwa {
 
   .nav-lang-item {
     padding: 14px 0;
+    justify-content: flex-start;
   }
 
   .main-header .nav-toggle:checked ~ .nav-toggle-label {
