@@ -33,6 +33,11 @@ function shouldSkipMiddleware(pathname: string): boolean {
   );
 }
 
+/** POST de Server Actions: no redirigir ni reescribir cookies (rompe la respuesta). */
+function isServerActionRequest(request: NextRequest): boolean {
+  return request.headers.has('next-action');
+}
+
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
@@ -42,6 +47,10 @@ export async function middleware(request: NextRequest) {
 
   const intlResponse = intlMiddleware(request);
   const response = intlResponse ?? NextResponse.next();
+
+  if (isServerActionRequest(request)) {
+    return response;
+  }
 
   const session = await getIronSession<SessionData>(
     request,

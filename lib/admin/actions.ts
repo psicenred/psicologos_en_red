@@ -24,25 +24,33 @@ export async function updatePsicologoVisibilidadAction(
     visible_internacional: boolean;
   }>
 > {
-  if (!isDatabaseConfigured()) {
-    return { ok: false, error: 'Base de datos no configurada' };
-  }
-
-  const admin = await requireAdminSession();
-  if (!admin) return { ok: false, error: 'No autorizado' };
-
-  if (!Number.isFinite(id) || id <= 0) {
-    return { ok: false, error: 'ID inválido' };
-  }
-
   try {
+    if (!isDatabaseConfigured()) {
+      return { ok: false, error: 'Base de datos no configurada' };
+    }
+
+    const admin = await requireAdminSession();
+    if (!admin) return { ok: false, error: 'No autorizado' };
+
+    if (!Number.isFinite(id) || id <= 0) {
+      return { ok: false, error: 'ID inválido' };
+    }
+
     const row = await updateAdminPsicologoVisibilidad(
       id,
       visibleMexico,
       visibleInternacional,
     );
     if (!row) return { ok: false, error: 'Psicólogo no encontrado' };
-    return { ok: true, data: row };
+
+    return {
+      ok: true,
+      data: {
+        id: Number(row.id),
+        visible_mexico: Boolean(row.visible_mexico),
+        visible_internacional: Boolean(row.visible_internacional),
+      },
+    };
   } catch (error) {
     console.error('updatePsicologoVisibilidadAction:', error);
     return { ok: false, error: 'Error al actualizar visibilidad' };
@@ -52,16 +60,16 @@ export async function updatePsicologoVisibilidadAction(
 export async function saveAdminVideoConfigAction(
   videoBoton15min: boolean,
 ): Promise<AdminActionResult<{ video_boton_15min: boolean }>> {
-  if (!isDatabaseConfigured()) {
-    return { ok: false, error: 'Base de datos no configurada' };
-  }
-
-  const admin = await requireAdminSession();
-  if (!admin) return { ok: false, error: 'No autorizado' };
-
   try {
+    if (!isDatabaseConfigured()) {
+      return { ok: false, error: 'Base de datos no configurada' };
+    }
+
+    const admin = await requireAdminSession();
+    if (!admin) return { ok: false, error: 'No autorizado' };
+
     const data = await saveAdminVideoBoton15Min(videoBoton15min);
-    return { ok: true, data };
+    return { ok: true, data: { video_boton_15min: Boolean(data.video_boton_15min) } };
   } catch (error) {
     console.error('saveAdminVideoConfigAction:', error);
     return { ok: false, error: 'Error al guardar la configuración' };
@@ -73,21 +81,26 @@ export async function updateAdminProfileAction(input: {
   telefono?: string;
   password?: string;
 }): Promise<AdminActionResult<{ success: true }>> {
-  if (!isDatabaseConfigured()) {
-    return { ok: false, error: 'Base de datos no configurada' };
+  try {
+    if (!isDatabaseConfigured()) {
+      return { ok: false, error: 'Base de datos no configurada' };
+    }
+
+    const usuario = await requireSessionUsuario();
+    if (!usuario) return { ok: false, error: 'No autorizado' };
+
+    const result = await updateUsuarioProfile(usuario.id, usuario.nombre, {
+      nombre: input.nombre,
+      telefono: input.telefono,
+      password: input.password,
+    });
+
+    if (!result.ok) return { ok: false, error: result.error };
+
+    await updateSessionNombre(input.nombre.trim() || usuario.nombre);
+    return { ok: true, data: { success: true } };
+  } catch (error) {
+    console.error('updateAdminProfileAction:', error);
+    return { ok: false, error: 'Error al actualizar el perfil' };
   }
-
-  const usuario = await requireSessionUsuario();
-  if (!usuario) return { ok: false, error: 'No autorizado' };
-
-  const result = await updateUsuarioProfile(usuario.id, usuario.nombre, {
-    nombre: input.nombre,
-    telefono: input.telefono,
-    password: input.password,
-  });
-
-  if (!result.ok) return { ok: false, error: result.error };
-
-  await updateSessionNombre(input.nombre.trim() || usuario.nombre);
-  return { ok: true, data: { success: true } };
 }

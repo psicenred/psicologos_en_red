@@ -448,23 +448,28 @@ export function AdminPsicologosSection({
       campo === 'visible_internacional' ? !valor : Boolean(psi.visible_internacional);
 
     setVisibilidadError(null);
-    const result = await updatePsicologoVisibilidadAction(id, vm, vi);
-    if (!result.ok) {
-      setVisibilidadError(result.error);
+    try {
+      const result = await updatePsicologoVisibilidadAction(id, vm, vi);
+      if (!result.ok) {
+        setVisibilidadError(result.error);
+        return;
+      }
+
+      qc.setQueryData(['admin-psicologos'], (old: Record<string, unknown>[] | undefined) =>
+        (old ?? []).map((p) =>
+          Number(p.id) === id
+            ? {
+                ...p,
+                visible_mexico: result.data.visible_mexico,
+                visible_internacional: result.data.visible_internacional,
+              }
+            : p,
+        ),
+      );
+    } catch {
+      setVisibilidadError('Error de conexión con el servidor.');
       return;
     }
-
-    qc.setQueryData(['admin-psicologos'], (old: Record<string, unknown>[] | undefined) =>
-      (old ?? []).map((p) =>
-        Number(p.id) === id
-          ? {
-              ...p,
-              visible_mexico: result.data.visible_mexico,
-              visible_internacional: result.data.visible_internacional,
-            }
-          : p,
-      ),
-    );
     router.refresh();
   }
 
