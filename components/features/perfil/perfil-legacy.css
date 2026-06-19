@@ -646,6 +646,54 @@
   background: #16213e;
 }
 
+/* Pseudo fullscreen en móvil (iOS no soporta requestFullscreen en elementos) */
+body.video-pseudo-fullscreen {
+  overflow: hidden !important;
+}
+
+body.video-pseudo-fullscreen #jitsi-container {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 99999 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100svh !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+}
+
+body.video-pseudo-fullscreen #seccion-video {
+  padding: 0 !important;
+  max-height: none !important;
+  overflow: hidden !important;
+}
+
+body.video-pseudo-fullscreen .perfil-video-container {
+  min-height: 0 !important;
+  height: 100% !important;
+}
+
+.jitsi-fs-cerrar {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  z-index: 100000;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .chat-main-container {
   display: flex;
   background: white;
@@ -1055,14 +1103,92 @@
 
   .chat-main-container {
     flex-direction: column;
-    height: auto;
-    min-height: 60vh;
+    height: calc(
+      100svh - 120px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
+    );
+    max-height: calc(
+      100svh - 120px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
+    );
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #seccion-chat {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  #seccion-chat .chat-main-container {
+    flex: 1;
+    min-height: 0;
   }
 
   .chat-sidebar {
     width: 100%;
+    max-height: 28svh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-shrink: 0;
     border-right: none;
     border-bottom: 1px solid #eee;
+  }
+
+  .chat-window {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .chat-messages-container {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chat-messages-inner {
+    min-height: 0;
+  }
+
+  .chat-input-area {
+    flex-wrap: wrap;
+    align-items: stretch;
+    padding: 10px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+  }
+
+  .chat-input-area input[type='text'] {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+    order: 1;
+    box-sizing: border-box;
+  }
+
+  .chat-input-area button:not(.btn-entrar-sesion) {
+    order: 2;
+    flex-shrink: 0;
+    padding: 10px 12px;
+    font-size: 0.85rem;
+  }
+
+  .chat-input-area .btn-entrar-sesion {
+    order: 3;
+    flex-shrink: 0;
+    margin-left: auto;
+    padding: 10px 16px;
+    white-space: nowrap;
+  }
+
+  .perfil-main:has(#seccion-chat) {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
 
   .cita-card-actions > button,

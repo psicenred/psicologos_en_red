@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DailyRoom } from '@/components/features/video/DailyRoom';
 import { PrivateChat } from '@/components/features/chat/PrivateChat';
+import { useVideoFullscreen } from '@/lib/hooks/useVideoFullscreen';
 import {
   type CitaDoctor,
   diasSinCita,
@@ -339,6 +340,7 @@ export function DoctorVideoSection({
   onNotasSaved?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const { toggleFullscreen, buttonLabel } = useVideoFullscreen(containerRef);
   const [notas, setNotas] = useState(citaSeleccionada?.notas || '');
   const [guardado, setGuardado] = useState(false);
 
@@ -368,9 +370,9 @@ export function DoctorVideoSection({
         <button
           type="button"
           className="btn-pantalla-completa-video"
-          onClick={() => containerRef.current?.requestFullscreen?.()}
+          onClick={toggleFullscreen}
         >
-          ⛶ Pantalla completa
+          {buttonLabel}
         </button>
       </header>
 

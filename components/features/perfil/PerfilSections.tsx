@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { DailyRoom } from '@/components/features/video/DailyRoom';
 import { PrivateChat } from '@/components/features/chat/PrivateChat';
+import { useVideoFullscreen } from '@/lib/hooks/useVideoFullscreen';
 import { ReagendarDialog } from '@/components/features/citas/ReagendarDialog';
 import { PerfilAgendarDialog } from '@/components/features/perfil/PerfilAgendarDialog';
 import {
@@ -413,12 +414,7 @@ export function PerfilVideoSection({
   onLeave: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-
-  function pantallaCompleta() {
-    const el = containerRef.current;
-    if (!el) return;
-    if (el.requestFullscreen) el.requestFullscreen();
-  }
+  const { toggleFullscreen, buttonLabel } = useVideoFullscreen(containerRef);
 
   return (
     <div className="seccion-panel" id="seccion-video">
@@ -431,9 +427,9 @@ export function PerfilVideoSection({
           type="button"
           className="btn-pantalla-completa-video"
           title="Pantalla completa"
-          onClick={pantallaCompleta}
+          onClick={toggleFullscreen}
         >
-          ⛶ Pantalla completa
+          {buttonLabel}
         </button>
       </header>
       <div className="perfil-video-container" ref={containerRef} id="jitsi-container">
