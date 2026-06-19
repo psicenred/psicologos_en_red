@@ -11,14 +11,14 @@ UPDATE citas
 SET zona_horaria = 'America/Mexico_City'
 WHERE TRIM(COALESCE(zona_horaria, '')) = 'UTC';
 
--- Rellenar fecha_hora_utc faltante usando zona_horaria de la cita
+-- Rellenar / corregir fecha_hora_utc desde fecha+hora+zona (sobreescribe legacy Railway incorrecto)
 UPDATE citas c
 SET fecha_hora_utc = (
-  (c.fecha + c.hora) AT TIME ZONE COALESCE(
-    NULLIF(TRIM(c.zona_horaria), ''),
-    'America/Mexico_City'
+  (c.fecha + c.hora) AT TIME ZONE (
+    CASE
+      WHEN NULLIF(TRIM(c.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
+      ELSE COALESCE(NULLIF(TRIM(c.zona_horaria), ''), 'America/Mexico_City')
+    END
   )
 )::timestamptz::text
-WHERE (c.fecha_hora_utc IS NULL OR TRIM(c.fecha_hora_utc) = '')
-  AND c.fecha IS NOT NULL
-  AND c.hora IS NOT NULL;
+WHERE c.fecha IS NOT NULL AND c.hora IS NOT NULL;

@@ -241,7 +241,7 @@ export async function reagendarCita(params: {
     estado: string;
     seconds_until: number;
   };
-  if (!['pendiente', 'confirmada'].includes(row.estado)) {
+  if (!['pendiente', 'confirmada'].includes((row.estado || '').toLowerCase())) {
     return {
       error: 'Solo puedes reagendar citas pendientes o confirmadas.',
       status: 403,
@@ -332,7 +332,7 @@ export async function cancelarCita(params: {
     fecha_hora_utc?: string | Date | null;
   };
 
-  if (!['pendiente', 'confirmada'].includes(row.estado)) {
+  if (!['pendiente', 'confirmada'].includes((row.estado || '').toLowerCase())) {
     return {
       error: 'Solo puedes cancelar citas pendientes o confirmadas.',
       status: 403,

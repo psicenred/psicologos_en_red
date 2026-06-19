@@ -2,15 +2,23 @@
 export const DURACION_SESION_MS = 60 * 60 * 1000;
 export const DURACION_SESION_MINUTOS = 60;
 
-/** Expresión SQL: instante timestamptz de una fila citas (alias c). */
-export const SQL_CITA_INSTANT_C = `(CASE
-  WHEN c.fecha_hora_utc IS NOT NULL AND TRIM(c.fecha_hora_utc) <> ''
-    THEN c.fecha_hora_utc::timestamptz
-  ELSE ((c.fecha + c.hora) AT TIME ZONE COALESCE(NULLIF(TRIM(c.zona_horaria), ''), 'America/Mexico_City'))
-END)`;
+/** Zona IANA normalizada de una fila citas (alias c). */
+export const SQL_ZONA_CITA_C = `CASE
+  WHEN NULLIF(TRIM(c.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
+  ELSE COALESCE(NULLIF(TRIM(c.zona_horaria), ''), 'America/Mexico_City')
+END`;
+
+/**
+ * Instante timestamptz de la cita: fecha+hora en zona del psicólogo.
+ * No usar fecha_hora_utc como fuente primaria (legacy Railway puede estar mal).
+ */
+export const SQL_CITA_INSTANT_C = `((c.fecha + c.hora) AT TIME ZONE (${SQL_ZONA_CITA_C}))`;
 
 export const ZONA_HORARIA_CITA_SQL = `CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
   ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END`;
+
+/** Mismo instante como texto ISO para APIs y emails. */
+export const SQL_CITA_INSTANT_ISO_C = `(${SQL_CITA_INSTANT_C})::timestamptz::text`;
 
 const MS_15 = 15 * 60 * 1000;
 

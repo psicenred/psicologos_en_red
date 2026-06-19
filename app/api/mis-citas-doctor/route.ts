@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { databaseUnavailableJson, requireAuthUsuario } from '@/lib/auth/api';
 import { marcarCitasNoRealizadas } from '@/lib/citas/no-show';
+import { SQL_CITA_INSTANT_ISO_C } from '@/lib/citas/cita-timing';
 import { decryptMensajeContenido } from '@/lib/crypto/messages';
 import { isDatabaseConfigured, query } from '@/lib/db';
 
@@ -24,10 +25,7 @@ export async function GET(request: Request) {
         u.nombre AS paciente_nombre,
         u.id AS paciente_usuario_id,
         u.id AS id_para_chat,
-        COALESCE(
-          NULLIF(TRIM(c.fecha_hora_utc), ''),
-          ((c.fecha + c.hora) AT TIME ZONE COALESCE(NULLIF(TRIM(c.zona_horaria), ''), 'America/Mexico_City'))::timestamptz::text
-        ) AS fecha_hora_utc,
+        ${SQL_CITA_INSTANT_ISO_C} AS fecha_hora_utc,
         COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') AS zona_horaria_psicologo
       FROM citas c
       JOIN vista_psicologos v ON c.psicologo_id = v.psicologo_id_tabla

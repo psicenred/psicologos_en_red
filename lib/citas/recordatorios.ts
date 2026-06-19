@@ -3,6 +3,7 @@ import { query } from '@/lib/db';
 import { sendMail } from '@/lib/email';
 import { enviarWhatsapp } from '@/lib/whatsapp';
 import { ZONA_HORARIA_DEFECTO } from '@/lib/citas/availability';
+import { SQL_CITA_INSTANT_C } from '@/lib/citas/cita-timing';
 import { enviarCorreosRecordatorioCita } from '@/lib/citas/emails';
 
 export async function ejecutarRecordatoriosCitas(): Promise<{
@@ -16,14 +17,14 @@ export async function ejecutarRecordatoriosCitas(): Promise<{
     let usoFechaHoraUtc = true;
     try {
       res = await query(`
-        SELECT c.id, c.paciente_id, c.psicologo_id, c.fecha, c.hora, c.fecha_hora_utc
+        SELECT c.id, c.paciente_id, c.psicologo_id, c.fecha, c.hora,
+               (${SQL_CITA_INSTANT_C})::timestamptz::text AS fecha_hora_utc
         FROM citas c
         WHERE c.estado IN ('pendiente', 'confirmada')
           AND c.recordatorio_enviado_at IS NULL
-          AND c.fecha_hora_utc IS NOT NULL AND c.fecha_hora_utc != ''
-          AND (c.fecha_hora_utc::timestamptz) > NOW()
-          AND (c.fecha_hora_utc::timestamptz) - NOW() <= INTERVAL '35 minutes'
-          AND (c.fecha_hora_utc::timestamptz) - NOW() >= INTERVAL '25 minutes'
+          AND (${SQL_CITA_INSTANT_C}) > NOW()
+          AND (${SQL_CITA_INSTANT_C}) - NOW() <= INTERVAL '35 minutes'
+          AND (${SQL_CITA_INSTANT_C}) - NOW() >= INTERVAL '25 minutes'
       `);
     } catch (qErr) {
       const msg = (qErr as Error).message || '';

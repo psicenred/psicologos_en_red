@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAuthUsuario } from '@/lib/auth/api';
+import { SQL_CITA_INSTANT_ISO_C } from '@/lib/citas/cita-timing';
 import { marcarCitasNoRealizadas } from '@/lib/citas/no-show';
 import { isDatabaseConfigured, query } from '@/lib/db';
 
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
     try {
       result = await query(
         `SELECT c.id, c.fecha, c.hora, c.estado, c.link_sesion, c.psicologo_id, p.nombre as psicologo_nombre,
-                c.fecha_hora_utc, c.zona_horaria
+                ${SQL_CITA_INSTANT_ISO_C} AS fecha_hora_utc, c.zona_horaria
          FROM citas c
          JOIN psicologos p ON c.psicologo_id = p.id
          WHERE c.paciente_id = $1
