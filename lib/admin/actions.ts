@@ -1,20 +1,32 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
 import {
   saveAdminVideoBoton15Min,
   updateAdminPsicologoVisibilidad,
 } from '@/lib/admin/queries';
+import { verifyAdminMutationInDb } from '@/lib/admin/verify-mutation';
 import { updateSessionNombre } from '@/lib/session';
 import { updateUsuarioProfile } from '@/lib/auth/service';
-import { requireAdminSession, requireSessionUsuario } from '@/lib/auth/server-session';
-import { isDatabaseConfigured } from '@/lib/db';
+import { isDatabaseConfigured, query } from '@/lib/db';
 
 export type AdminActionResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: string };
 
+const SESSION_EXPIRED_MSG = 'Sesión expirada. Recarga la página e intenta de nuevo.';
+
+async function requireAdminMutation(
+  mutationToken: string,
+): Promise<number | AdminActionResult<never>> {
+  const adminUserId = await verifyAdminMutationInDb(mutationToken);
+  if (!adminUserId) {
+    return { ok: false, error: SESSION_EXPIRED_MSG };
+  }
+  return adminUserId;
+}
+
 export async function updatePsicologoVisibilidadAction(
+  mutationToken: string,
   id: number,
   visibleMexico: boolean,
   visibleInternacional: boolean,
@@ -30,8 +42,8 @@ export async function updatePsicologoVisibilidadAction(
       return { ok: false, error: 'Base de datos no configurada' };
     }
 
-    const admin = await requireAdminSession();
-    if (!admin) return { ok: false, error: 'No autorizado' };
+    const admin = await requireAdminMutation(mutationToken);
+    if (typeof admin !== 'number') return admin;
 
     if (!Number.isFinite(id) || id <= 0) {
       return { ok: false, error: 'ID inválido' };
@@ -43,9 +55,6 @@ export async function updatePsicologoVisibilidadAction(
       visibleInternacional,
     );
     if (!row) return { ok: false, error: 'Psicólogo no encontrado' };
-
-    revalidatePath('/panel-admin');
-    revalidatePath('/en/panel-admin');
 
     return {
       ok: true,
@@ -69,6 +78,7 @@ export async function updatePsicologoVisibilidadAction(
 }
 
 export async function saveAdminVideoConfigAction(
+  mutationToken: string,
   videoBoton15min: boolean,
 ): Promise<AdminActionResult<{ video_boton_15min: boolean }>> {
   try {
@@ -76,8 +86,8 @@ export async function saveAdminVideoConfigAction(
       return { ok: false, error: 'Base de datos no configurada' };
     }
 
-    const admin = await requireAdminSession();
-    if (!admin) return { ok: false, error: 'No autorizado' };
+    const admin = await requireAdminMutation(mutationToken);
+    if (typeof admin !== 'number') return admin;
 
     const data = await saveAdminVideoBoton15Min(videoBoton15min);
     return { ok: true, data: { video_boton_15min: Boolean(data.video_boton_15min) } };
@@ -87,20 +97,29 @@ export async function saveAdminVideoConfigAction(
   }
 }
 
-export async function updateAdminProfileAction(input: {
-  nombre: string;
-  telefono?: string;
-  password?: string;
-}): Promise<AdminActionResult<{ success: true }>> {
+export async function updateAdminProfileAction(
+  mutationToken: string,
+  input: {
+    nombre: string;
+    telefono?: string;
+    password?: string;
+  },
+): Promise<AdminActionResult<{ success: true }>> {
   try {
     if (!isDatabaseConfigured()) {
       return { ok: false, error: 'Base de datos no configurada' };
     }
 
-    const usuario = await requireSessionUsuario();
-    if (!usuario) return { ok: false, error: 'No autorizado' };
+    const adminUserId = await verifyAdminMutationInDb(mutationToken);
+    if (!adminUserId) {
+      return { ok: false, error: SESSION_EXPIRED_MSG };
+    }
 
-    const result = await updateUsuarioProfile(usuario.id, usuario.nombre, {
+    const userRow = await query('SELECT nombre FROM usuarios WHERE id = $1', [adminUserId]);
+    const currentNombre =
+      (userRow.rows[0] as { nombre?: string } | undefined)?.nombre ?? input.nombre;
+
+    const result = await updateUsuarioProfile(adminUserId, currentNombre, {
       nombre: input.nombre,
       telefono: input.telefono,
       password: input.password,
@@ -108,7 +127,11 @@ export async function updateAdminProfileAction(input: {
 
     if (!result.ok) return { ok: false, error: result.error };
 
-    await updateSessionNombre(input.nombre.trim() || usuario.nombre);
+    try {
+      await updateSessionNombre(input.nombre.trim() || currentNombre);
+    } catch {
+      // La cookie puede no estar disponible en POST; el perfil ya quedó guardado.
+    }
     return { ok: true, data: { success: true } };
   } catch (error) {
     console.error('updateAdminProfileAction:', error);

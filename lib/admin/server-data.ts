@@ -13,6 +13,7 @@ import {
   loadUsuarioTelefono,
 } from '@/lib/admin/queries';
 import type { AdminPanelInitialData } from '@/lib/admin/types';
+import { createAdminMutationToken } from '@/lib/admin/mutation-token';
 import { isDatabaseConfigured } from '@/lib/db';
 import { getSession } from '@/lib/session';
 
@@ -53,5 +54,6 @@ export async function loadAdminPanelData(): Promise<AdminPanelInitialData | null
         telefono,
       },
     },
+    mutationToken: createAdminMutationToken(session.usuario.id),
   };
 }

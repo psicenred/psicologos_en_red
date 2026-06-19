@@ -49,14 +49,6 @@ export async function middleware(request: NextRequest) {
   const response = intlResponse ?? NextResponse.next();
 
   if (isServerActionRequest(request)) {
-    const session = await getIronSession<SessionData>(
-      request,
-      response,
-      getSessionOptions(),
-    );
-    if (session.usuario) {
-      await session.save();
-    }
     return response;
   }
 

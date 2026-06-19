@@ -17,4 +17,6 @@ export type AdminPanelInitialData = {
   pacientes: Record<string, unknown>[];
   blog: Record<string, unknown>[];
   config: AdminConfigInitialData;
+  /** Token firmado para mutaciones admin sin depender de cookie en POST. */
+  mutationToken: string;
 };

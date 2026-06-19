@@ -408,15 +408,19 @@ export function AdminCitasSection({
   );
 }
 
+type VisibilidadCampo = 'visible_mexico' | 'visible_internacional';
+type PendingToggle = { id: number; campo: VisibilidadCampo } | null;
+
 export function AdminPsicologosSection({
   initialData,
 }: {
   initialData?: AdminPanelInitialData | null;
 }) {
   const qc = useQueryClient();
+  const mutationToken = initialData?.mutationToken ?? '';
   const [busqueda, setBusqueda] = useState('');
   const [visibilidadError, setVisibilidadError] = useState<string | null>(null);
-  const [pendingId, setPendingId] = useState<number | null>(null);
+  const [pendingToggle, setPendingToggle] = useState<PendingToggle>(null);
 
   const {
     data: psicologos = [],
@@ -451,9 +455,14 @@ export function AdminPsicologosSection({
 
   async function toggleVisibilidad(
     id: number,
-    campo: 'visible_mexico' | 'visible_internacional',
+    campo: VisibilidadCampo,
     valor: boolean,
   ) {
+    if (!mutationToken) {
+      setVisibilidadError('Sesión expirada. Recarga la página e intenta de nuevo.');
+      return;
+    }
+
     const psi = psicologos.find((p: Record<string, unknown>) => Number(p.id) === id);
     if (!psi) return;
 
@@ -464,14 +473,19 @@ export function AdminPsicologosSection({
     const previous = qc.getQueryData<Record<string, unknown>[]>(['admin-psicologos']);
 
     setVisibilidadError(null);
-    setPendingId(id);
+    setPendingToggle({ id, campo });
     patchPsicologoVisibilidad(id, vm, vi);
 
     try {
-      const result = await updatePsicologoVisibilidadAction(id, vm, vi);
-      if (!result.ok) {
+      const result = await updatePsicologoVisibilidadAction(
+        mutationToken,
+        id,
+        vm,
+        vi,
+      );
+      if (!result?.ok) {
         if (previous) qc.setQueryData(['admin-psicologos'], previous);
-        setVisibilidadError(result.error);
+        setVisibilidadError(result?.error ?? 'No se pudo actualizar la visibilidad.');
         return;
       }
 
@@ -484,8 +498,12 @@ export function AdminPsicologosSection({
       if (previous) qc.setQueryData(['admin-psicologos'], previous);
       setVisibilidadError('Error de conexión con el servidor.');
     } finally {
-      setPendingId(null);
+      setPendingToggle(null);
     }
+  }
+
+  function isTogglePending(id: number, campo: VisibilidadCampo) {
+    return pendingToggle?.id === id && pendingToggle.campo === campo;
   }
 
   const filtrados = useMemo(() => {
@@ -547,7 +565,7 @@ export function AdminPsicologosSection({
                   <button
                     type="button"
                     className="vis-toggle"
-                    disabled={pendingId === Number(p.id)}
+                    disabled={isTogglePending(Number(p.id), 'visible_mexico')}
                     onClick={() =>
                       toggleVisibilidad(
                         Number(p.id),
@@ -556,7 +574,7 @@ export function AdminPsicologosSection({
                       )
                     }
                   >
-                    {pendingId === Number(p.id)
+                    {isTogglePending(Number(p.id), 'visible_mexico')
                       ? '⏳'
                       : toBool(p.visible_mexico)
                         ? '✅'
@@ -567,7 +585,7 @@ export function AdminPsicologosSection({
                   <button
                     type="button"
                     className="vis-toggle"
-                    disabled={pendingId === Number(p.id)}
+                    disabled={isTogglePending(Number(p.id), 'visible_internacional')}
                     onClick={() =>
                       toggleVisibilidad(
                         Number(p.id),
@@ -576,7 +594,7 @@ export function AdminPsicologosSection({
                       )
                     }
                   >
-                    {pendingId === Number(p.id)
+                    {isTogglePending(Number(p.id), 'visible_internacional')
                       ? '⏳'
                       : toBool(p.visible_internacional)
                         ? '✅'
@@ -987,6 +1005,7 @@ export function AdminConfigSection({
 }: {
   initialData?: AdminPanelInitialData | null;
 }) {
+  const mutationToken = initialData?.mutationToken ?? '';
   const profile = initialData?.config?.profile;
   const [editing, setEditing] = useState(false);
   const [nombre, setNombre] = useState(profile?.nombre ?? '');
@@ -1004,7 +1023,7 @@ export function AdminConfigSection({
     setSaving(true);
     setProfileMsg('');
     try {
-      const result = await updateAdminProfileAction({
+      const result = await updateAdminProfileAction(mutationToken, {
         nombre,
         telefono,
         password: password || undefined,
@@ -1023,7 +1042,7 @@ export function AdminConfigSection({
 
   async function guardarVideoConfig() {
     setVideoMsg('');
-    const result = await saveAdminVideoConfigAction(video15);
+    const result = await saveAdminVideoConfigAction(mutationToken, video15);
     setVideoMsg(
       result.ok ? '✅ Configuración guardada' : `❌ ${result.error}`,
     );
