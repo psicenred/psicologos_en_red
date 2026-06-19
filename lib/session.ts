@@ -99,17 +99,17 @@ export async function getSession(request?: Request) {
   const options = getSessionOptions();
   const cookieName = options.cookieName ?? 'psic-en-red-session';
 
-  // Patrón recomendado por iron-session en App Router: cookies() primero.
-  const cookieStore = await cookies();
-  const fromStore = await getIronSession<SessionData>(cookieStore, options);
-  if (fromStore.usuario) return fromStore;
-
+  // En Server Actions, el header Cookie suele ser más fiable que cookies().
   const headerStore = await headers();
   const cookieHeader = headerStore.get('cookie');
   if (cookieHeader?.includes(cookieName)) {
     const fromHeaders = await readSessionFromCookieHeader(cookieHeader);
     if (fromHeaders.usuario) return fromHeaders;
   }
+
+  const cookieStore = await cookies();
+  const fromStore = await getIronSession<SessionData>(cookieStore, options);
+  if (fromStore.usuario) return fromStore;
 
   if (request) {
     return readSessionFromRequest(request);

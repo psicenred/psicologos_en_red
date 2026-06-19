@@ -1,6 +1,6 @@
+import { isUndefinedColumn } from '@/lib/admin/db-errors';
 import { marcarCitasNoRealizadas } from '@/lib/citas/no-show';
 import { query } from '@/lib/db';
-import { isUndefinedColumn } from '@/lib/admin/db-errors';
 
 export type AdminCitasStats = {
   pendiente: number;
@@ -260,16 +260,23 @@ export async function updateAdminPsicologoVisibilidad(
   visibleMexico: boolean,
   visibleInternacional: boolean,
 ) {
-  const result = await query(
-    `UPDATE psicologos
-     SET visible_mexico = $1, visible_internacional = $2
-     WHERE id = $3
-     RETURNING id, visible_mexico, visible_internacional`,
-    [visibleMexico, visibleInternacional, id],
-  );
-  return result.rows[0] as
-    | { id: number; visible_mexico: boolean; visible_internacional: boolean }
-    | undefined;
+  try {
+    const result = await query(
+      `UPDATE psicologos
+       SET visible_mexico = $1, visible_internacional = $2
+       WHERE id = $3
+       RETURNING id, visible_mexico, visible_internacional`,
+      [visibleMexico, visibleInternacional, id],
+    );
+    return result.rows[0] as
+      | { id: number; visible_mexico: boolean; visible_internacional: boolean }
+      | undefined;
+  } catch (error) {
+    if (isUndefinedColumn(error)) {
+      throw new Error('missing_visibility_columns');
+    }
+    throw error;
+  }
 }
 
 export async function listAdminBlogArticles() {

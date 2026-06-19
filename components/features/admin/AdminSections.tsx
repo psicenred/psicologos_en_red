@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
 import { BlogImageUpload, RichTextEditor } from '@/components/features/admin/BlogEditor';
 import {
   CarteraChart,
@@ -81,12 +80,18 @@ function ResumenCitasTable({
 }
 
 async function fetchAdminList(url: string) {
-  const res = await fetch(url);
+  const res = await fetch(url, { credentials: 'include' });
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { error?: string } | null;
     throw new Error(body?.error ?? `HTTP ${res.status}`);
   }
   return res.json() as Promise<Record<string, unknown>[]>;
+}
+
+function toBool(value: unknown): boolean {
+  if (value === true || value === 'true' || value === 1 || value === '1') return true;
+  if (value === false || value === 'false' || value === 0 || value === '0') return false;
+  return Boolean(value);
 }
 
 export function AdminDashboardSection({
@@ -409,9 +414,9 @@ export function AdminPsicologosSection({
   initialData?: AdminPanelInitialData | null;
 }) {
   const qc = useQueryClient();
-  const router = useRouter();
   const [busqueda, setBusqueda] = useState('');
   const [visibilidadError, setVisibilidadError] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<number | null>(null);
 
   const {
     data: psicologos = [],
@@ -426,6 +431,63 @@ export function AdminPsicologosSection({
     ...SERVER_BACKED_QUERY,
   });
 
+  function patchPsicologoVisibilidad(
+    id: number,
+    visibleMexico: boolean,
+    visibleInternacional: boolean,
+  ) {
+    qc.setQueryData(['admin-psicologos'], (old: Record<string, unknown>[] | undefined) =>
+      (old ?? []).map((p) =>
+        Number(p.id) === id
+          ? {
+              ...p,
+              visible_mexico: visibleMexico,
+              visible_internacional: visibleInternacional,
+            }
+          : p,
+      ),
+    );
+  }
+
+  async function toggleVisibilidad(
+    id: number,
+    campo: 'visible_mexico' | 'visible_internacional',
+    valor: boolean,
+  ) {
+    const psi = psicologos.find((p: Record<string, unknown>) => Number(p.id) === id);
+    if (!psi) return;
+
+    const vm = campo === 'visible_mexico' ? !valor : toBool(psi.visible_mexico);
+    const vi =
+      campo === 'visible_internacional' ? !valor : toBool(psi.visible_internacional);
+
+    const previous = qc.getQueryData<Record<string, unknown>[]>(['admin-psicologos']);
+
+    setVisibilidadError(null);
+    setPendingId(id);
+    patchPsicologoVisibilidad(id, vm, vi);
+
+    try {
+      const result = await updatePsicologoVisibilidadAction(id, vm, vi);
+      if (!result.ok) {
+        if (previous) qc.setQueryData(['admin-psicologos'], previous);
+        setVisibilidadError(result.error);
+        return;
+      }
+
+      patchPsicologoVisibilidad(
+        id,
+        result.data.visible_mexico,
+        result.data.visible_internacional,
+      );
+    } catch {
+      if (previous) qc.setQueryData(['admin-psicologos'], previous);
+      setVisibilidadError('Error de conexión con el servidor.');
+    } finally {
+      setPendingId(null);
+    }
+  }
+
   const filtrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     if (!q) return psicologos;
@@ -435,43 +497,6 @@ export function AdminPsicologosSection({
         .includes(q),
     );
   }, [psicologos, busqueda]);
-
-  async function toggleVisibilidad(
-    id: number,
-    campo: 'visible_mexico' | 'visible_internacional',
-    valor: boolean,
-  ) {
-    const psi = psicologos.find((p: Record<string, unknown>) => Number(p.id) === id);
-    if (!psi) return;
-    const vm = campo === 'visible_mexico' ? !valor : Boolean(psi.visible_mexico);
-    const vi =
-      campo === 'visible_internacional' ? !valor : Boolean(psi.visible_internacional);
-
-    setVisibilidadError(null);
-    try {
-      const result = await updatePsicologoVisibilidadAction(id, vm, vi);
-      if (!result.ok) {
-        setVisibilidadError(result.error);
-        return;
-      }
-
-      qc.setQueryData(['admin-psicologos'], (old: Record<string, unknown>[] | undefined) =>
-        (old ?? []).map((p) =>
-          Number(p.id) === id
-            ? {
-                ...p,
-                visible_mexico: result.data.visible_mexico,
-                visible_internacional: result.data.visible_internacional,
-              }
-            : p,
-        ),
-      );
-    } catch {
-      setVisibilidadError('Error de conexión con el servidor.');
-      return;
-    }
-    router.refresh();
-  }
 
   return (
     <section id="psicologos" className="admin-section active">
@@ -522,26 +547,40 @@ export function AdminPsicologosSection({
                   <button
                     type="button"
                     className="vis-toggle"
+                    disabled={pendingId === Number(p.id)}
                     onClick={() =>
-                      toggleVisibilidad(Number(p.id), 'visible_mexico', !!p.visible_mexico)
+                      toggleVisibilidad(
+                        Number(p.id),
+                        'visible_mexico',
+                        toBool(p.visible_mexico),
+                      )
                     }
                   >
-                    {p.visible_mexico ? '✅' : '❌'}
+                    {pendingId === Number(p.id)
+                      ? '⏳'
+                      : toBool(p.visible_mexico)
+                        ? '✅'
+                        : '❌'}
                   </button>
                 </td>
                 <td>
                   <button
                     type="button"
                     className="vis-toggle"
+                    disabled={pendingId === Number(p.id)}
                     onClick={() =>
                       toggleVisibilidad(
                         Number(p.id),
                         'visible_internacional',
-                        !!p.visible_internacional,
+                        toBool(p.visible_internacional),
                       )
                     }
                   >
-                    {p.visible_internacional ? '✅' : '❌'}
+                    {pendingId === Number(p.id)
+                      ? '⏳'
+                      : toBool(p.visible_internacional)
+                        ? '✅'
+                        : '❌'}
                   </button>
                 </td>
                 <td>{String(p.citas_hoy ?? 0)}</td>

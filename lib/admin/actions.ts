@@ -1,5 +1,6 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import {
   saveAdminVideoBoton15Min,
   updateAdminPsicologoVisibilidad,
@@ -43,6 +44,9 @@ export async function updatePsicologoVisibilidadAction(
     );
     if (!row) return { ok: false, error: 'Psicólogo no encontrado' };
 
+    revalidatePath('/panel-admin');
+    revalidatePath('/en/panel-admin');
+
     return {
       ok: true,
       data: {
@@ -52,6 +56,13 @@ export async function updatePsicologoVisibilidadAction(
       },
     };
   } catch (error) {
+    if (error instanceof Error && error.message === 'missing_visibility_columns') {
+      return {
+        ok: false,
+        error:
+          'Faltan las columnas visible_mexico/visible_internacional en la base de datos.',
+      };
+    }
     console.error('updatePsicologoVisibilidadAction:', error);
     return { ok: false, error: 'Error al actualizar visibilidad' };
   }
