@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { isDatabaseConfigured, query } from '@/lib/db';
 import { getBaseUrl, getBaseUrlSource } from '@/lib/config';
+import { isBaileysWorkerConfigured } from '@/lib/whatsapp/providers/baileys-api';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 function parseDatabaseUrlInfo(): {
@@ -61,6 +62,8 @@ export async function GET() {
       supabaseStorage: isSupabaseConfigured(),
       stripe: Boolean(process.env.STRIPE_SECRET_KEY?.trim()),
       cron: Boolean(process.env.CRON_SECRET?.trim()),
+      whatsappProvider: process.env.WHATSAPP_PROVIDER?.trim() || 'auto',
+      whatsappWorker: isBaileysWorkerConfigured(),
       publicBaseUrl: getBaseUrl(),
       publicBaseUrlSource: getBaseUrlSource(),
     },

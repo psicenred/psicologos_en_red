@@ -6,6 +6,7 @@ node_modules/
 *.log
 .DS_Store
 uploads/
+data/whatsapp-auth/
 .vercel
 tsconfig.tsbuildinfo
 railway_export*.sql

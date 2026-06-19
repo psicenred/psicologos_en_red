@@ -1,6 +1,7 @@
 import { getBaseUrl } from '@/lib/config';
 import { query } from '@/lib/db';
 import { sendMail } from '@/lib/email';
+import { enviarWhatsapp } from '@/lib/whatsapp';
 import { ZONA_HORARIA_DEFECTO } from '@/lib/citas/availability';
 import { enviarCorreosRecordatorioCita } from '@/lib/citas/emails';
 
@@ -134,11 +135,11 @@ export async function ejecutarRecordatoriosPostCita(): Promise<{
       );
 
       const userRow = await query(
-        'SELECT nombre, email FROM usuarios WHERE id = $1',
+        'SELECT nombre, email, telefono FROM usuarios WHERE id = $1',
         [r.paciente_id],
       );
       const usuario = userRow.rows[0] as
-        | { nombre?: string; email?: string }
+        | { nombre?: string; email?: string; telefono?: string | null }
         | undefined;
       if (!usuario?.email) continue;
 
@@ -184,6 +185,10 @@ export async function ejecutarRecordatoriosPostCita(): Promise<{
               ${botonHtml}
             </div>`,
           });
+          await enviarWhatsapp(
+            usuario.telefono,
+            `Psicólogos en Red – Han pasado un par de semanas desde tu última sesión, ${primerNombre}. Agenda aquí: ${enlaceLogin}`,
+          );
           await query(
             'UPDATE recordatorio_post_cita SET enviado_dia_15_at = NOW() WHERE paciente_id = $1 AND cita_id = $2',
             [r.paciente_id, r.cita_id],
@@ -206,6 +211,10 @@ export async function ejecutarRecordatoriosPostCita(): Promise<{
               ${botonHtml}
             </div>`,
           });
+          await enviarWhatsapp(
+            usuario.telefono,
+            `Psicólogos en Red – ${primerNombre}, hace un mes de tu última sesión. Reconecta aquí: ${enlaceLogin}`,
+          );
           await query(
             'UPDATE recordatorio_post_cita SET enviado_dia_30_at = NOW() WHERE paciente_id = $1 AND cita_id = $2',
             [r.paciente_id, r.cita_id],
@@ -228,6 +237,10 @@ export async function ejecutarRecordatoriosPostCita(): Promise<{
               ${botonHtml}
             </div>`,
           });
+          await enviarWhatsapp(
+            usuario.telefono,
+            `Psicólogos en Red – ${primerNombre}, han pasado 60 días desde tu última sesión. Te apoyamos aquí: ${enlaceLogin}`,
+          );
           await query(
             'UPDATE recordatorio_post_cita SET enviado_dia_60_at = NOW() WHERE paciente_id = $1 AND cita_id = $2',
             [r.paciente_id, r.cita_id],
