@@ -316,6 +316,7 @@ export function PerfilCitasSection({
           onOpenChange={(o) => !o && setReagendar(null)}
           citaId={reagendar.id}
           psicologoId={reagendar.psicologo_id}
+          psicologoNombre={reagendar.psicologo_nombre}
           onSuccess={() => {
             setReagendar(null);
             onRefetch();
