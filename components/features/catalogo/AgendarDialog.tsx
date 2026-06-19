@@ -1,19 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { format } from 'date-fns';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { DateTimePicker } from '@/components/features/citas/DateTimePicker';
 import { minSessionPrice } from '@/lib/catalog-pricing';
-import { releaseAllBodyScrollLocks } from '@/lib/hooks/useBodyScrollLock';
+import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import type { Psicologo } from '@/components/features/catalogo/CatalogoClient';
 
 type RegionState = {
@@ -35,12 +30,22 @@ export function AgendarDialog({
   region?: RegionState;
 }) {
   const t = useTranslations('catalog');
+  const [mounted, setMounted] = useState(false);
   const [fecha, setFecha] = useState<Date | undefined>();
   const [hora, setHora] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [precio, setPrecio] = useState<{ amount: number; currency: string } | null>(null);
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
+  const onCloseRef = useRef(() => onOpenChange(false));
+
+  onCloseRef.current = () => onOpenChange(false);
+
+  useBodyScrollLock(open);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) {
@@ -48,6 +53,7 @@ export function AgendarDialog({
       setHora('');
       setError('');
       setPrecio(null);
+      setLoggedIn(null);
       return;
     }
     fetch('/api/estado-sesion')
@@ -68,9 +74,12 @@ export function AgendarDialog({
   }, [open, psicologo, region]);
 
   useEffect(() => {
-    if (open) return;
-    const id = requestAnimationFrame(() => releaseAllBodyScrollLocks());
-    return () => cancelAnimationFrame(id);
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCloseRef.current();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
   async function confirmar() {
@@ -108,14 +117,45 @@ export function AgendarDialog({
     }
   }
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>
+  if (!open || !mounted) return null;
+
+  return createPortal(
+    <div
+      className="catalogo-agendar-overlay"
+      style={{
+        display: 'flex',
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.5)',
+        zIndex: 10001,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onCloseRef.current();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="grid w-full max-w-lg gap-4 rounded-lg border bg-background p-6 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <h2 className="text-lg font-semibold leading-none tracking-tight">
             {psicologo ? t('bookWith', { name: psicologo.nombre }) : t('book')}
-          </DialogTitle>
-        </DialogHeader>
+          </h2>
+          <button
+            type="button"
+            onClick={() => onCloseRef.current()}
+            className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
+            aria-label={t('closeProfile')}
+          >
+            ×
+          </button>
+        </div>
+
         {loggedIn === false ? (
           <div className="space-y-3 text-sm">
             <p>{t('loginRequired')}</p>
@@ -158,7 +198,8 @@ export function AgendarDialog({
             </Button>
           </div>
         ) : null}
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>,
+    document.body,
   );
 }

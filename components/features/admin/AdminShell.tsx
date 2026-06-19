@@ -89,13 +89,9 @@ export function AdminShell({
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/logout"
-                  className="perfil-mobile-nav-link perfil-mobile-logout"
-                  onClick={closeMobileNav}
-                >
+                <a href="/logout" className="perfil-mobile-nav-link perfil-mobile-logout">
                   🚪 Cerrar Sesión
-                </Link>
+                </a>
               </li>
             </ul>
           </nav>
@@ -122,10 +118,10 @@ export function AdminShell({
               </li>
             ))}
             <li>
-              <Link href="/logout">
+              <a href="/logout">
                 <span className="icon">🚪</span>
                 <span>Cerrar Sesión</span>
-              </Link>
+              </a>
             </li>
           </ul>
         </aside>
@@ -135,9 +131,9 @@ export function AdminShell({
             <h1>{title}</h1>
             <div className="admin-user">
               <div className="avatar">{nombre}</div>
-              <Link href="/logout" className="btn-logout">
+              <a href="/logout" className="btn-logout">
                 Salir
-              </Link>
+              </a>
             </div>
           </header>
           <div className="admin-content">{children}</div>

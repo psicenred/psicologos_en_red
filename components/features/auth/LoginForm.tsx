@@ -7,7 +7,6 @@ import { Link } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { loginAction } from '@/lib/auth/actions';
 import { loginSchema } from '@/lib/schemas/auth';
 
 type LoginApiError =
@@ -37,15 +36,6 @@ function mapLoginApiError(code: string | undefined, t: (key: string) => string):
   }
 }
 
-function isNextRedirect(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'digest' in error &&
-    String((error as { digest: string }).digest).startsWith('NEXT_REDIRECT')
-  );
-}
-
 export function LoginForm() {
   const t = useTranslations('auth');
   const searchParams = useSearchParams();
@@ -56,7 +46,10 @@ export function LoginForm() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    setIsRedirecting(false);
+    setSubmitting(false);
     document.body.style.overflow = '';
+    document.body.style.pointerEvents = '';
   }, []);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -84,27 +77,47 @@ export function LoginForm() {
 
     setSubmitting(true);
     setIsRedirecting(true);
-    try {
-      const payload = new FormData(form);
-      payload.set('email', parsed.data.email.toLowerCase());
-      payload.set('password', parsed.data.password);
-      const next = searchParams.get('next') || searchParams.get('redirect');
-      if (next) payload.set('next', next);
 
-      const result = await loginAction(payload);
-      if (result?.error) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 30_000);
+
+    try {
+      const next = searchParams.get('next') || searchParams.get('redirect') || undefined;
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        signal: controller.signal,
+        body: JSON.stringify({
+          email: parsed.data.email.toLowerCase(),
+          password: parsed.data.password,
+          next,
+        }),
+      });
+
+      const data = (await res.json()) as {
+        ok?: boolean;
+        redirect?: string;
+        error?: string;
+        email?: string;
+      };
+
+      if (!res.ok) {
         setIsRedirecting(false);
-        if (result.error === 'db_unavailable') {
-          setError(t('dbUnavailable'));
-        } else {
-          setError(mapLoginApiError(result.error, t));
-        }
+        setError(mapLoginApiError(data.error, t));
+        return;
       }
+
+      window.location.assign(data.redirect || '/perfil');
     } catch (err) {
-      if (isNextRedirect(err)) return;
       setIsRedirecting(false);
-      setError(t('connectionError'));
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setError(t('connectionError'));
+      } else {
+        setError(t('connectionError'));
+      }
     } finally {
+      window.clearTimeout(timeoutId);
       setSubmitting(false);
     }
   }
@@ -126,7 +139,7 @@ export function LoginForm() {
           spellCheck={false}
           placeholder="ejemplo@correo.com"
           className="auth-input text-base"
-          disabled={isRedirecting}
+          disabled={loading}
         />
         {fieldErrors.email ? (
           <p className="text-xs text-destructive">{fieldErrors.email}</p>
@@ -140,7 +153,7 @@ export function LoginForm() {
           type="password"
           autoComplete="current-password"
           className="auth-input text-base"
-          disabled={isRedirecting}
+          disabled={loading}
         />
         {fieldErrors.password ? (
           <p className="text-xs text-destructive">{fieldErrors.password}</p>

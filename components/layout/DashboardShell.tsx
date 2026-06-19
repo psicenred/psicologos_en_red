@@ -68,9 +68,9 @@ export function DashboardShell({
           )}
         </nav>
         <div className="border-t border-white/10 p-3">
-          <Link href="/logout" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/10">
+          <a href="/logout" className="block rounded-lg px-3 py-2 text-sm hover:bg-white/10">
             🚪 Cerrar sesión
-          </Link>
+          </a>
         </div>
       </aside>
 

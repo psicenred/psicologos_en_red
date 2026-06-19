@@ -80,13 +80,9 @@ export function DoctorShell({
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/logout"
-                  className="perfil-mobile-nav-link perfil-mobile-logout"
-                  onClick={closeMobileNav}
-                >
+                <a href="/logout" className="perfil-mobile-nav-link perfil-mobile-logout">
                   🚪 Cerrar Sesión
-                </Link>
+                </a>
               </li>
             </ul>
           </nav>
@@ -125,10 +121,10 @@ export function DoctorShell({
           </nav>
 
           <div className="sidebar-footer">
-            <Link href="/logout" className="btn-logout">
+            <a href="/logout" className="btn-logout">
               <span className="nav-icon">🚪</span>
               <span className="nav-label">Cerrar Sesión</span>
-            </Link>
+            </a>
           </div>
         </aside>
 

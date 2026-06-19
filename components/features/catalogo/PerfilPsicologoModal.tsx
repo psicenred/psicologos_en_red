@@ -37,14 +37,12 @@ function initials(nombre: string) {
 }
 
 export function PerfilPsicologoModal({
-  open,
   psicologoId,
   initialPsicologo,
   onClose,
   onAgendar,
 }: {
-  open: boolean;
-  psicologoId: number | null;
+  psicologoId: number;
   initialPsicologo: Psicologo | null;
   onClose: () => void;
   onAgendar: (p: Psicologo) => void;
@@ -53,26 +51,24 @@ export function PerfilPsicologoModal({
   const [mounted, setMounted] = useState(false);
   const [profile, setProfile] = useState<Psicologo | null>(initialPsicologo);
   const [opiniones, setOpiniones] = useState<Opinion[]>([]);
-  const [loadingOpiniones, setLoadingOpiniones] = useState(false);
+  const [loadingOpiniones, setLoadingOpiniones] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const onCloseRef = useRef(onClose);
   const requestSeqRef = useRef(0);
 
   onCloseRef.current = onClose;
 
-  useBodyScrollLock(open);
+  useBodyScrollLock(true);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    if (!open || psicologoId === null) return;
-
     const seq = ++requestSeqRef.current;
     setProfile(initialPsicologo);
     setOpiniones([]);
-    setLoadError(false);
+    setLoadError(!initialPsicologo);
     setLoadingOpiniones(true);
 
     const controller = new AbortController();
@@ -86,6 +82,7 @@ export function PerfilPsicologoModal({
         if (seq !== requestSeqRef.current) return;
         setProfile(json.datos ?? initialPsicologo);
         setOpiniones(json.opiniones ?? []);
+        setLoadError(false);
       })
       .catch((err: unknown) => {
         if (seq !== requestSeqRef.current) return;
@@ -100,20 +97,20 @@ export function PerfilPsicologoModal({
     return () => {
       controller.abort();
     };
-  }, [open, psicologoId, initialPsicologo]);
+  }, [psicologoId, initialPsicologo]);
 
   useEffect(() => {
-    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onCloseRef.current();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
+  }, []);
 
-  if (!open || psicologoId === null || !mounted) return null;
+  if (!mounted) return null;
 
-  const p = profile;
+  const p =
+    profile?.id === psicologoId ? profile : initialPsicologo;
 
   const content = (
     <div

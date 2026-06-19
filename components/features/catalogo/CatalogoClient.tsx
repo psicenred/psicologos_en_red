@@ -8,7 +8,6 @@ import { CatalogoSurveyModal } from '@/components/features/catalogo/CatalogoSurv
 import { PerfilPsicologoModal } from '@/components/features/catalogo/PerfilPsicologoModal';
 import { fetchJsonArray } from '@/lib/fetch-api';
 import { fetchPrecioRegionClient } from '@/lib/geo-client';
-import { releaseAllBodyScrollLocks } from '@/lib/hooks/useBodyScrollLock';
 import { minSessionPrice } from '@/lib/catalog-pricing';
 import { asStringArray } from '@/lib/pg-arrays';
 import { PRECIOS_DEFAULT_MXN, PRECIOS_DEFAULT_USD } from '@/lib/geo';
@@ -246,7 +245,6 @@ export function CatalogoClient() {
 
   const closeProfile = useCallback(() => {
     setProfileId(null);
-    requestAnimationFrame(() => releaseAllBodyScrollLocks());
     if (typeof window !== 'undefined' && searchParams.get('ver')) {
       const url = new URL(window.location.href);
       url.searchParams.delete('ver');
@@ -614,15 +612,18 @@ export function CatalogoClient() {
 
       <CatalogoSurveyModal open={surveyOpen} onClose={() => setSurveyOpen(false)} />
 
-      <PerfilPsicologoModal
-        open={profileId !== null}
-        psicologoId={profileId}
-        initialPsicologo={selectedPsicologo}
-        onClose={closeProfile}
-        onAgendar={openAgendarFromProfile}
-      />
+      {profileId !== null ? (
+        <PerfilPsicologoModal
+          key={profileId}
+          psicologoId={profileId}
+          initialPsicologo={selectedPsicologo}
+          onClose={closeProfile}
+          onAgendar={openAgendarFromProfile}
+        />
+      ) : null}
 
       <AgendarDialog
+        key={agendarTarget?.id ?? 'closed'}
         psicologo={agendarTarget}
         open={!!agendarTarget}
         onOpenChange={(o) => !o && setAgendarTarget(null)}
