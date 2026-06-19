@@ -69,6 +69,15 @@ export async function middleware(request: NextRequest) {
 
     const rol = normalizeRol(session.usuario.rol);
 
+    if (barePath === '/perfil' || barePath.startsWith('/perfil/')) {
+      if (rol === 'admin') {
+        return NextResponse.redirect(new URL('/panel-admin', request.url));
+      }
+      if (rol === 'psicologo') {
+        return NextResponse.redirect(new URL('/panel-doctor', request.url));
+      }
+    }
+
     if (barePath.startsWith('/panel-admin') && rol !== 'admin') {
       return NextResponse.redirect(new URL('/login', request.url));
     }

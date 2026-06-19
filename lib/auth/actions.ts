@@ -1,14 +1,9 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { loginRedirectPath, normalizeEmail } from '@/lib/auth/api';
+import { normalizeEmail, resolvePostLoginRedirect } from '@/lib/auth/api';
 import { ensureDb, loginWithCredentials } from '@/lib/auth/service';
 import { destroySession, setSessionUsuario } from '@/lib/session';
-
-function safeRedirectPath(next: string | null | undefined, fallback: string): string {
-  if (!next || !next.startsWith('/') || next.startsWith('//')) return fallback;
-  return next;
-}
 
 export type LoginActionResult = {
   error?: string;
@@ -34,5 +29,5 @@ export async function loginAction(formData: FormData): Promise<LoginActionResult
   await destroySession();
   await setSessionUsuario(result.usuario);
 
-  redirect(safeRedirectPath(next, loginRedirectPath(result.rol)));
+  redirect(resolvePostLoginRedirect(next, result.rol));
 }

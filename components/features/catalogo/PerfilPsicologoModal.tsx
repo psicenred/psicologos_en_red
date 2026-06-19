@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { Psicologo } from '@/components/features/catalogo/CatalogoClient';
+import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 
 type Opinion = {
   paciente_nombre: string;
@@ -39,44 +40,59 @@ export function PerfilPsicologoModal({
   onClose,
   onAgendar,
 }: {
-  psicologoId: number | null;
+  psicologoId: number;
   onClose: () => void;
   onAgendar: (p: Psicologo) => void;
 }) {
   const t = useTranslations('catalog');
   const [data, setData] = useState<{ datos: Psicologo; opiniones: Opinion[] } | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const onCloseRef = useRef(onClose);
+
+  onCloseRef.current = onClose;
+
+  useBodyScrollLock(true);
 
   useEffect(() => {
-    if (!psicologoId) {
-      setData(null);
-      return;
-    }
+    const controller = new AbortController();
+    let cancelled = false;
+
+    setData(null);
+    setLoadError(false);
     setLoading(true);
-    fetch(`/api/psicologo/${psicologoId}`)
+
+    fetch(`/api/psicologo/${psicologoId}`, { signal: controller.signal })
       .then(async (r) => {
         if (!r.ok) throw new Error('fail');
         return r.json();
       })
-      .then(setData)
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
+      .then((json) => {
+        if (cancelled) return;
+        setData(json);
+      })
+      .catch((err: unknown) => {
+        if (cancelled || (err instanceof DOMException && err.name === 'AbortError')) return;
+        setData(null);
+        setLoadError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
   }, [psicologoId]);
 
   useEffect(() => {
-    if (!psicologoId) return;
-    document.body.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') onCloseRef.current();
     };
     window.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = '';
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [psicologoId, onClose]);
-
-  if (!psicologoId) return null;
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const p = data?.datos;
 
@@ -129,8 +145,27 @@ export function PerfilPsicologoModal({
         </button>
 
         <div className="perfil-scroll-content" style={{ padding: 30, overflowY: 'auto' }}>
-          {loading || !p ? (
+          {loading ? (
             <p style={{ textAlign: 'center', color: '#666' }}>{t('loading')}</p>
+          ) : loadError || !p ? (
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ color: '#666', marginBottom: 16 }}>{t('profileLoadError')}</p>
+              <button
+                type="button"
+                style={{
+                  background: 'var(--primario-rosa)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+                onClick={onClose}
+              >
+                {t('closeProfile')}
+              </button>
+            </div>
           ) : (
             <>
               <header style={{ textAlign: 'center', marginBottom: 20 }}>

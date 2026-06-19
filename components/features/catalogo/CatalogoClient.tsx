@@ -243,6 +243,19 @@ export function CatalogoClient() {
   const [agendarTarget, setAgendarTarget] = useState<Psicologo | null>(null);
   const [urlApplied, setUrlApplied] = useState(false);
 
+  const closeProfile = useCallback(() => {
+    setProfileId(null);
+    if (typeof window !== 'undefined' && searchParams.get('ver')) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('ver');
+      window.history.replaceState({}, '', `${url.pathname}${url.search}`);
+    }
+  }, [searchParams]);
+
+  const openAgendarFromProfile = useCallback((p: Psicologo) => {
+    setAgendarTarget(p);
+  }, []);
+
   const loadPsicologos = useCallback(async (inMexico: boolean | null) => {
     const url =
       inMexico === null ? '/api/psicologos' : `/api/psicologos?inMexico=${inMexico ? 'true' : 'false'}`;
@@ -590,11 +603,14 @@ export function CatalogoClient() {
 
       <CatalogoSurveyModal open={surveyOpen} onClose={() => setSurveyOpen(false)} />
 
-      <PerfilPsicologoModal
-        psicologoId={profileId}
-        onClose={() => setProfileId(null)}
-        onAgendar={(p) => setAgendarTarget(p)}
-      />
+      {profileId !== null ? (
+        <PerfilPsicologoModal
+          key={profileId}
+          psicologoId={profileId}
+          onClose={closeProfile}
+          onAgendar={openAgendarFromProfile}
+        />
+      ) : null}
 
       <AgendarDialog
         psicologo={agendarTarget}

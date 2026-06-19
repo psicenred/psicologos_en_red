@@ -64,6 +64,39 @@ export function loginRedirectPath(rol: string): string {
   return '/perfil';
 }
 
+/** Ruta tras login: respeta `next` solo si es válida para el rol del usuario. */
+export function resolvePostLoginRedirect(
+  next: string | null | undefined,
+  rol: string,
+): string {
+  const fallback = loginRedirectPath(rol);
+  const normalizedRol = normalizeRol(rol);
+
+  if (!next || !next.startsWith('/') || next.startsWith('//')) {
+    return fallback;
+  }
+
+  const barePath = next.split('?')[0]?.split('#')[0] ?? '';
+
+  if (normalizedRol === 'admin') {
+    if (barePath === '/perfil' || barePath.startsWith('/perfil/')) return fallback;
+    if (barePath.startsWith('/panel-doctor')) return fallback;
+  }
+
+  if (normalizedRol === 'psicologo') {
+    if (barePath === '/perfil' || barePath.startsWith('/perfil/')) return fallback;
+    if (barePath.startsWith('/panel-admin')) return fallback;
+  }
+
+  if (normalizedRol === 'paciente') {
+    if (barePath.startsWith('/panel-admin') || barePath.startsWith('/panel-doctor')) {
+      return fallback;
+    }
+  }
+
+  return next;
+}
+
 /** HTML inline (paridad con legacy) para respuestas de verificación / errores auth. */
 export function authHtmlResponse(html: string, status = 200) {
   return new NextResponse(html, {
