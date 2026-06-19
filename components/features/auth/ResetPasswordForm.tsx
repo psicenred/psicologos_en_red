@@ -28,7 +28,11 @@ export function ResetPasswordForm({ token }: { token: string }) {
         body: JSON.stringify({ token, password: data.password }),
       });
       const json = await res.json();
-      setMsg(json.success ? t('passwordUpdated') : json.error || t('connectionError'));
+      if (json.success) {
+        setMsg(t('passwordUpdated'));
+      } else {
+        setMsg(json.error || t('connectionError'));
+      }
     } catch {
       setMsg(t('connectionError'));
     }

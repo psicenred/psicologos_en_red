@@ -1,29 +1,38 @@
-import Link from 'next/link';
+import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
+import { Link } from '@/i18n/routing';
 import { AuthLayout } from '@/components/layout/AuthLayout';
+import { ForgotPasswordForm } from '@/components/features/auth/ForgotPasswordForm';
 import { ResetPasswordForm } from '@/components/features/auth/ResetPasswordForm';
 import { ensureDb, isResetTokenValid } from '@/lib/auth/service';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('auth');
+  return { title: t('forgotPasswordTitle') };
+}
 
 export default async function ReestablecerPasswordPage({
   searchParams,
 }: {
   searchParams: Promise<{ token?: string }>;
 }) {
+  const t = await getTranslations('auth');
   const { token } = await searchParams;
 
   if (!token) {
     return (
-      <AuthLayout title="Enlace inválido" subtitle="Solicita uno nuevo desde el login">
-        <Link href="/login" className="text-center text-primary">
-          Ir al login
-        </Link>
+      <AuthLayout title={t('forgotPasswordTitle')} subtitle={t('forgotPasswordSubtitle')}>
+        <ForgotPasswordForm />
       </AuthLayout>
     );
   }
 
   if (!ensureDb()) {
     return (
-      <AuthLayout title="Servicio no disponible" subtitle="Base de datos no configurada">
-        <Link href="/">Volver al inicio</Link>
+      <AuthLayout title={t('serviceUnavailable')} subtitle={t('dbUnavailable')}>
+        <Link href="/" className="block text-center text-sm text-primary">
+          {t('backHome')}
+        </Link>
       </AuthLayout>
     );
   }
@@ -31,16 +40,19 @@ export default async function ReestablecerPasswordPage({
   const valid = await isResetTokenValid(token);
   if (!valid) {
     return (
-      <AuthLayout title="Enlace expirado" subtitle="El enlace no es válido o ya expiró">
-        <Link href="/login" className="text-primary">
-          Ir al login
+      <AuthLayout title={t('resetLinkExpired')} subtitle={t('resetLinkExpiredHint')}>
+        <Link href="/reestablecer-password" className="block text-center text-sm text-primary">
+          {t('requestNewResetLink')}
+        </Link>
+        <Link href="/login" className="mt-3 block text-center text-xs text-muted-foreground">
+          {t('goLogin')}
         </Link>
       </AuthLayout>
     );
   }
 
   return (
-    <AuthLayout title="Nueva contraseña" subtitle="Elige una contraseña segura">
+    <AuthLayout title={t('newPasswordTitle')} subtitle={t('newPasswordSubtitle')}>
       <ResetPasswordForm token={token} />
     </AuthLayout>
   );

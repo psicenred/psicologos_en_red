@@ -14,9 +14,13 @@ export async function POST(request: Request) {
 
   if (!email || !ensureDb()) return response;
 
-  void requestPasswordReset(email).catch((err) => {
-    console.error('[olvide-password]', err);
-  });
+  void requestPasswordReset(email)
+    .then((result) => {
+      if (!result.ok) console.error('[olvide-password]', result.code);
+    })
+    .catch((err) => {
+      console.error('[olvide-password]', err);
+    });
 
   return response;
 }

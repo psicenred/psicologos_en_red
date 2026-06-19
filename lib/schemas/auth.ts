@@ -38,6 +38,11 @@ export const resetPasswordSchema = z
     path: ['confirm'],
   });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Correo inválido'),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegistroInput = z.infer<typeof registroSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;

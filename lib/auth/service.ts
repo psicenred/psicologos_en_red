@@ -264,10 +264,14 @@ export async function resendVerificationEmail(email: string) {
   });
 }
 
-export async function requestPasswordReset(email: string) {
+export async function requestPasswordReset(
+  email: string,
+): Promise<{ ok: true } | { ok: false; code: 'not_found' | 'mail_failed' }> {
   const emailNorm = normalizeEmail(email);
   const result = await query('SELECT * FROM usuarios WHERE LOWER(email) = $1', [emailNorm]);
-  if (result.rows.length === 0) return;
+  if (result.rows.length === 0) {
+    return { ok: false, code: 'not_found' };
+  }
 
   const usuario = result.rows[0] as { id: number; nombre: string };
   const tokenReset = crypto.randomBytes(32).toString('hex');
@@ -280,10 +284,11 @@ export async function requestPasswordReset(email: string) {
 
   const resetLink = `${getBaseUrl()}/reestablecer-password?token=${tokenReset}`;
 
-  await sendMail({
-    to: emailNorm,
-    subject: 'Reestablece tu contraseña - Psicólogos en Red 🔐',
-    html: `
+  try {
+    await sendMail({
+      to: emailNorm,
+      subject: 'Reestablece tu contraseña - Psicólogos en Red 🔐',
+      html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <h2 style="color: #333;">Hola, ${usuario.nombre}</h2>
         <p style="color: #666;">Recibimos una solicitud para reestablecer tu contraseña:</p>
@@ -293,7 +298,13 @@ export async function requestPasswordReset(email: string) {
         <p style="color: #999; font-size: 14px;">Este enlace expira en 1 hora.</p>
       </div>
     `,
-  });
+    });
+  } catch (error) {
+    console.error('[requestPasswordReset] sendMail:', error);
+    return { ok: false, code: 'mail_failed' };
+  }
+
+  return { ok: true };
 }
 
 export async function isResetTokenValid(token: string): Promise<boolean> {
