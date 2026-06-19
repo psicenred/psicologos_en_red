@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isDatabaseConfigured, query } from '@/lib/db';
+import { getBaseUrl, getBaseUrlSource } from '@/lib/config';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 function parseDatabaseUrlInfo(): {
@@ -60,6 +61,8 @@ export async function GET() {
       supabaseStorage: isSupabaseConfigured(),
       stripe: Boolean(process.env.STRIPE_SECRET_KEY?.trim()),
       cron: Boolean(process.env.CRON_SECRET?.trim()),
+      publicBaseUrl: getBaseUrl(),
+      publicBaseUrlSource: getBaseUrlSource(),
     },
     timestamp: new Date().toISOString(),
   };
