@@ -2,6 +2,16 @@
 export const DURACION_SESION_MS = 60 * 60 * 1000;
 export const DURACION_SESION_MINUTOS = 60;
 
+/** Expresión SQL: instante timestamptz de una fila citas (alias c). */
+export const SQL_CITA_INSTANT_C = `(CASE
+  WHEN c.fecha_hora_utc IS NOT NULL AND TRIM(c.fecha_hora_utc) <> ''
+    THEN c.fecha_hora_utc::timestamptz
+  ELSE ((c.fecha + c.hora) AT TIME ZONE COALESCE(NULLIF(TRIM(c.zona_horaria), ''), 'America/Mexico_City'))
+END)`;
+
+export const ZONA_HORARIA_CITA_SQL = `CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
+  ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END`;
+
 const MS_15 = 15 * 60 * 1000;
 
 export function parseCitaInicio(params: {

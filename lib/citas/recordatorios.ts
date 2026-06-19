@@ -16,7 +16,7 @@ export async function ejecutarRecordatoriosCitas(): Promise<{
     let usoFechaHoraUtc = true;
     try {
       res = await query(`
-        SELECT c.id, c.paciente_id, c.psicologo_id, c.fecha, c.hora
+        SELECT c.id, c.paciente_id, c.psicologo_id, c.fecha, c.hora, c.fecha_hora_utc
         FROM citas c
         WHERE c.estado IN ('pendiente', 'confirmada')
           AND c.recordatorio_enviado_at IS NULL
@@ -34,7 +34,7 @@ export async function ejecutarRecordatoriosCitas(): Promise<{
         usoFechaHoraUtc = false;
         res = await query(
           `
-          SELECT c.id, c.paciente_id, c.psicologo_id, c.fecha, c.hora
+          SELECT c.id, c.paciente_id, c.psicologo_id, c.fecha, c.hora, c.fecha_hora_utc
           FROM citas c
           WHERE c.estado IN ('pendiente', 'confirmada')
             AND c.recordatorio_enviado_at IS NULL
@@ -65,13 +65,21 @@ export async function ejecutarRecordatoriosCitas(): Promise<{
         psicologo_id: number;
         fecha: unknown;
         hora: unknown;
+        fecha_hora_utc?: string | Date | null;
       };
+      const fecha_hora_utc =
+        r.fecha_hora_utc instanceof Date
+          ? r.fecha_hora_utc.toISOString()
+          : r.fecha_hora_utc
+            ? String(r.fecha_hora_utc)
+            : null;
       try {
         await enviarCorreosRecordatorioCita(
           r.paciente_id,
           r.psicologo_id,
           r.fecha,
           r.hora,
+          fecha_hora_utc,
         );
         await query(
           'UPDATE citas SET recordatorio_enviado_at = NOW() WHERE id = $1',

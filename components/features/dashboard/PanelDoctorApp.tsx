@@ -68,6 +68,19 @@ export function PanelDoctorApp() {
     },
   });
 
+  const { data: zonaPsi } = useQuery({
+    queryKey: ['mi-zona-horaria'],
+    queryFn: async () => {
+      const res = await fetch('/api/mi-zona-horaria');
+      return res.ok ? res.json() : { zona_horaria: 'America/Mexico_City' };
+    },
+  });
+
+  const zonaVisualizacion =
+    (zonaPsi as { zona_horaria?: string } | undefined)?.zona_horaria ||
+    (citas[0] as CitaDoctor | undefined)?.zona_horaria_psicologo ||
+    'America/Mexico_City';
+
   const chatContactos = useMemo(
     () =>
       pacientes.map((p: { id: number; nombre: string }) => ({
@@ -115,6 +128,7 @@ export function PanelDoctorApp() {
           onVideo={iniciarVideo}
           onNotas={abrirNotas}
           joiningCitaId={joiningCitaId}
+          zonaVisualizacion={zonaVisualizacion}
         />
       )}
 

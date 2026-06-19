@@ -4,26 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import { DayPicker } from 'react-day-picker';
 import { es } from 'date-fns/locale';
 import { format } from 'date-fns';
+import { formatHoraLocalDesdeIso } from '@/lib/timezone-client';
 
 function formatHoraLabel(hora: string, horariosIso?: string | null): string {
-  if (horariosIso) {
-    try {
-      const d = new Date(horariosIso);
-      if (!Number.isNaN(d.getTime())) {
-        return d.toLocaleTimeString('es-MX', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true,
-        });
-      }
-    } catch {
-      /* fallback */
-    }
-  }
-  const h = parseInt(hora.split(':')[0], 10);
-  const periodo = h < 12 ? 'AM' : 'PM';
-  const hora12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
-  return `${String(hora12).padStart(2, '0')}:00 ${periodo}`;
+  return formatHoraLocalDesdeIso(hora, horariosIso);
 }
 
 export function PerfilGestionCitaFields({

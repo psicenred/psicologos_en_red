@@ -2,6 +2,7 @@ import { getBaseUrl } from '@/lib/config';
 import { query } from '@/lib/db';
 import { getPrecioRegionAsync } from '@/lib/geo';
 import { getStripe } from '@/lib/stripe';
+import { SQL_CITA_INSTANT_C, ZONA_HORARIA_CITA_SQL } from '@/lib/citas/cita-timing';
 import { validateSlotAvailable } from '@/lib/citas/availability';
 import {
   enviarCorreosCitaAgendada,
@@ -9,6 +10,7 @@ import {
   enviarCorreosCitaReagendada,
 } from '@/lib/citas/emails';
 import { calcularMontoStripe } from '@/lib/citas/pricing';
+import { guardarZonaHorariaPaciente } from '@/lib/usuarios/zona-horaria';
 import type Stripe from 'stripe';
 
 function linkSesion(pacienteId: number, psicologoId: number): string {
@@ -24,7 +26,7 @@ export async function insertCitaFromWebhook(params: {
   motivoDeConsulta: string | null;
   origenConocimiento: string | null;
   recomendadoPor: string | null;
-}): Promise<number | null> {
+}): Promise<{ id: number | null; fecha_hora_utc: string | null }> {
   const {
     pacienteId,
     psicologoId,
@@ -46,7 +48,7 @@ export async function insertCitaFromWebhook(params: {
               ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END))::timestamptz::text,
          $6, $7, $8, $9
        FROM psicologos p WHERE p.id = $2
-       RETURNING id`,
+       RETURNING id, fecha_hora_utc`,
       [
         pacienteId,
         psicologoId,
@@ -70,7 +72,7 @@ export async function insertCitaFromWebhook(params: {
               ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END))::timestamptz::text,
          $6, $7, $8
        FROM psicologos p WHERE p.id = $2
-       RETURNING id`,
+       RETURNING id, fecha_hora_utc`,
       [
         pacienteId,
         psicologoId,
@@ -85,7 +87,7 @@ export async function insertCitaFromWebhook(params: {
 
   try {
     const result = await insertWithPaymentIntent();
-    return (result.rows[0] as { id: number } | undefined)?.id ?? null;
+    return rowInsertCita(result.rows[0]);
   } catch (err) {
     const msg = (err as Error).message || '';
     if (
@@ -93,10 +95,26 @@ export async function insertCitaFromWebhook(params: {
       msg.includes('does not exist')
     ) {
       const result = await insertSinStripe();
-      return (result.rows[0] as { id: number } | undefined)?.id ?? null;
+      return rowInsertCita(result.rows[0]);
     }
     throw err;
   }
+}
+
+function rowInsertCita(row: unknown): {
+  id: number | null;
+  fecha_hora_utc: string | null;
+} {
+  const r = row as { id?: number; fecha_hora_utc?: Date | string | null } | undefined;
+  if (!r?.id) return { id: null, fecha_hora_utc: null };
+  const raw = r.fecha_hora_utc;
+  const fecha_hora_utc =
+    raw == null || String(raw).trim() === ''
+      ? null
+      : raw instanceof Date
+        ? raw.toISOString()
+        : String(raw);
+  return { id: r.id, fecha_hora_utc };
 }
 
 export async function agendarCita(params: {
@@ -107,7 +125,15 @@ export async function agendarCita(params: {
   motivoDeConsulta?: string | null;
   origenConocimiento?: string | null;
   recomendadoPor?: string | null;
+  pacienteZonaHoraria?: string | null;
 }): Promise<{ success: true } | { error: string; status: number }> {
+  if (params.pacienteZonaHoraria) {
+    await guardarZonaHorariaPaciente(
+      params.pacienteId,
+      params.pacienteZonaHoraria,
+    );
+  }
+
   const slot = await validateSlotAvailable(
     params.psicologoId,
     params.fecha,
@@ -138,7 +164,7 @@ export async function agendarCita(params: {
          (($3::date + $4::time) AT TIME ZONE (CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
               ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END))::timestamptz::text,
          $7, $8
-       FROM psicologos p WHERE p.id = $2 RETURNING id`
+       FROM psicologos p WHERE p.id = $2 RETURNING id, fecha_hora_utc`
     : `INSERT INTO citas (paciente_id, psicologo_id, fecha, hora, link_sesion, zona_horaria, fecha_hora_utc, origen_conocimiento, recomendado_por)
        SELECT $1, $2, $3, $4, $5,
          CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
@@ -146,7 +172,7 @@ export async function agendarCita(params: {
          (($3::date + $4::time) AT TIME ZONE (CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
               ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END))::timestamptz::text,
          $6, $7
-       FROM psicologos p WHERE p.id = $2 RETURNING id`;
+       FROM psicologos p WHERE p.id = $2 RETURNING id, fecha_hora_utc`;
 
   const sqlParams = motivo
     ? [
@@ -170,8 +196,7 @@ export async function agendarCita(params: {
       ];
 
   const insertResult = await query(sqlWithMotivo, sqlParams);
-  const citaId =
-    (insertResult.rows[0] as { id?: number } | undefined)?.id ?? null;
+  const inserted = rowInsertCita(insertResult.rows[0]);
 
   try {
     await enviarCorreosCitaAgendada(
@@ -179,7 +204,8 @@ export async function agendarCita(params: {
       params.psicologoId,
       params.fecha,
       params.hora,
-      citaId,
+      inserted.id,
+      inserted.fecha_hora_utc,
     );
   } catch (e) {
     console.error('Error enviando correos cita:', e);
@@ -193,10 +219,18 @@ export async function reagendarCita(params: {
   citaId: number;
   fecha: string;
   hora: string;
+  pacienteZonaHoraria?: string | null;
 }): Promise<{ success: true } | { error: string; status: number }> {
+  if (params.pacienteZonaHoraria) {
+    await guardarZonaHorariaPaciente(
+      params.pacienteId,
+      params.pacienteZonaHoraria,
+    );
+  }
   const citaInfo = await query(
-    `SELECT id, estado, EXTRACT(EPOCH FROM ((fecha + hora) - NOW())) AS seconds_until
-     FROM citas WHERE id = $1 AND paciente_id = $2 LIMIT 1`,
+    `SELECT c.id, c.estado,
+            EXTRACT(EPOCH FROM (${SQL_CITA_INSTANT_C} - NOW())) AS seconds_until
+     FROM citas c WHERE c.id = $1 AND c.paciente_id = $2 LIMIT 1`,
     [params.citaId, params.pacienteId],
   );
   if (citaInfo.rows.length === 0) {
@@ -240,18 +274,22 @@ export async function reagendarCita(params: {
      SET fecha = $1, hora = $2, estado = 'pendiente',
          zona_horaria = CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
                             ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END,
-         fecha_hora_utc = (($1::date + $2::time) AT TIME ZONE (CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
-                            ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END))::timestamptz::text
+         fecha_hora_utc = (($1::date + $2::time) AT TIME ZONE (${ZONA_HORARIA_CITA_SQL}))::timestamptz::text
      FROM psicologos p WHERE p.id = c.psicologo_id AND c.id = $3 AND c.paciente_id = $4
        AND c.estado IN ('pendiente', 'confirmada')
-       AND ($1::date + $2::time) > NOW()
-     RETURNING c.id`,
+       AND (($1::date + $2::time) AT TIME ZONE (${ZONA_HORARIA_CITA_SQL})) > NOW()
+     RETURNING c.id, c.fecha_hora_utc`,
     [params.fecha, params.hora, params.citaId, params.pacienteId],
   );
 
   if (result.rowCount === 0) {
     return { error: 'La nueva fecha/hora debe ser futura.', status: 400 };
   }
+
+  const updated = rowInsertCita({
+    id: params.citaId,
+    fecha_hora_utc: (result.rows[0] as { fecha_hora_utc?: string }).fecha_hora_utc,
+  });
 
   try {
     await enviarCorreosCitaReagendada(
@@ -260,6 +298,7 @@ export async function reagendarCita(params: {
       params.fecha,
       params.hora,
       params.citaId,
+      updated.fecha_hora_utc,
     );
   } catch (e) {
     console.error('Error enviando correos reagendar:', e);
@@ -276,9 +315,9 @@ export async function cancelarCita(params: {
   | { error: string; status: number }
 > {
   const citaInfo = await query(
-    `SELECT id, estado, stripe_payment_intent_id,
-            EXTRACT(EPOCH FROM ((fecha + hora) - NOW())) AS seconds_until
-     FROM citas WHERE id = $1 AND paciente_id = $2 LIMIT 1`,
+    `SELECT c.id, c.estado, c.stripe_payment_intent_id, c.fecha_hora_utc,
+            EXTRACT(EPOCH FROM (${SQL_CITA_INSTANT_C} - NOW())) AS seconds_until
+     FROM citas c WHERE c.id = $1 AND c.paciente_id = $2 LIMIT 1`,
     [params.citaId, params.pacienteId],
   );
 
@@ -290,6 +329,7 @@ export async function cancelarCita(params: {
     estado: string;
     seconds_until: number;
     stripe_payment_intent_id?: string | null;
+    fecha_hora_utc?: string | Date | null;
   };
 
   if (!['pendiente', 'confirmada'].includes(row.estado)) {
@@ -352,6 +392,13 @@ export async function cancelarCita(params: {
   const horaCita =
     cancelled.hora != null ? String(cancelled.hora).substring(0, 5) : '';
 
+  const fechaHoraUtc =
+    row.fecha_hora_utc instanceof Date
+      ? row.fecha_hora_utc.toISOString()
+      : row.fecha_hora_utc
+        ? String(row.fecha_hora_utc)
+        : null;
+
   try {
     await enviarCorreosCitaCancelada(
       params.pacienteId,
@@ -359,6 +406,7 @@ export async function cancelarCita(params: {
       fechaCita,
       horaCita,
       params.citaId,
+      fechaHoraUtc,
     );
   } catch (e) {
     console.error('Error enviando correos cancelación:', e);
@@ -381,8 +429,16 @@ export async function crearSesionPago(
     cancelUrl?: string;
     origenConocimiento?: string;
     recomendadoPor?: string;
+    pacienteZonaHoraria?: string;
   },
 ): Promise<{ url: string } | { error: string; status: number; code?: string }> {
+  if (params.pacienteZonaHoraria) {
+    await guardarZonaHorariaPaciente(
+      params.pacienteId,
+      params.pacienteZonaHoraria,
+    );
+  }
+
   const stripe = getStripe();
   if (!stripe || !process.env.STRIPE_SECRET_KEY) {
     return {
@@ -504,6 +560,10 @@ export async function crearSesionPago(
         params.recomendadoPor.length <= 200 && {
           recomendado_por: String(params.recomendadoPor),
         }),
+      ...(params.pacienteZonaHoraria &&
+        params.pacienteZonaHoraria.length <= 64 && {
+          paciente_zona_horaria: params.pacienteZonaHoraria,
+        }),
     },
     allow_promotion_codes: true,
   });
@@ -541,6 +601,9 @@ export async function handleStripeCheckoutCompleted(
     (meta.motivo_de_consulta &&
       String(meta.motivo_de_consulta).trim().slice(0, 200)) ||
     null;
+  const pacienteZonaHoraria = meta.paciente_zona_horaria
+    ? String(meta.paciente_zona_horaria).trim().slice(0, 64)
+    : null;
 
   const paymentIntentId =
     typeof session.payment_intent === 'string'
@@ -551,9 +614,16 @@ export async function handleStripeCheckoutCompleted(
         ? String(session.payment_intent.id)
         : null;
 
-  const citaId = await insertCitaFromWebhook({
-    pacienteId: parseInt(pacienteId, 10),
-    psicologoId: parseInt(psicologoId, 10),
+  const pacienteIdNum = parseInt(pacienteId, 10);
+  const psicologoIdNum = parseInt(psicologoId, 10);
+
+  if (pacienteZonaHoraria) {
+    await guardarZonaHorariaPaciente(pacienteIdNum, pacienteZonaHoraria);
+  }
+
+  const inserted = await insertCitaFromWebhook({
+    pacienteId: pacienteIdNum,
+    psicologoId: psicologoIdNum,
     fecha,
     hora,
     paymentIntentId,
@@ -564,11 +634,12 @@ export async function handleStripeCheckoutCompleted(
 
   try {
     await enviarCorreosCitaAgendada(
-      parseInt(pacienteId, 10),
-      parseInt(psicologoId, 10),
+      pacienteIdNum,
+      psicologoIdNum,
       fecha,
       hora,
-      citaId,
+      inserted.id,
+      inserted.fecha_hora_utc,
     );
   } catch (e) {
     console.error('Error enviando correos cita (webhook):', e);

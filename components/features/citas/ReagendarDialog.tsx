@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
+import { getZonaNavegador } from '@/lib/timezone-client';
 import { PerfilGestionCitaFields } from '@/components/features/perfil/PerfilGestionCitaFields';
 
 type Props = {
@@ -64,6 +65,7 @@ export function ReagendarDialog({
           cita_id: citaId,
           fecha: format(fecha, 'yyyy-MM-dd'),
           hora,
+          zona_horaria_paciente: getZonaNavegador(),
         }),
       });
       const data = await res.json();

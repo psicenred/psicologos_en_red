@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { format } from 'date-fns';
+import { getZonaNavegador } from '@/lib/timezone-client';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
@@ -94,6 +95,7 @@ export function AgendarDialog({
           psicologo_id: psicologo.id,
           fecha: format(fecha, 'yyyy-MM-dd'),
           hora,
+          zona_horaria_paciente: getZonaNavegador(),
           currency: region?.currency || undefined,
           success_url: `${window.location.origin}/perfil?pago=exito`,
           cancel_url: `${window.location.origin}/catalogo`,

@@ -23,6 +23,7 @@ function CitaCardDoctor({
   joining,
   onVideo,
   onNotas,
+  zonaVisualizacion,
 }: {
   cita: CitaDoctor;
   esFutura: boolean;
@@ -30,6 +31,7 @@ function CitaCardDoctor({
   joining?: boolean;
   onVideo: () => void;
   onNotas: () => void;
+  zonaVisualizacion?: string | null;
 }) {
   const estado = (cita.estado || '').toLowerCase();
   const puedeUnirse = puedeUnirseVideo(cita, video15Min);
@@ -81,7 +83,7 @@ function CitaCardDoctor({
       <div className="cita-info">
         <h4>{cita.paciente_nombre}</h4>
         <span>
-          {formatCitaFecha(cita)} | {formatCitaHora(cita)}
+          {formatCitaFecha(cita, zonaVisualizacion)} | {formatCitaHora(cita, zonaVisualizacion)}
         </span>
         <p>
           <strong>Motivo:</strong> {cita.motivo || 'No especificado'}
@@ -103,12 +105,14 @@ export function DoctorDashboardSection({
   onVideo,
   onNotas,
   joiningCitaId = null,
+  zonaVisualizacion,
 }: {
   citas: CitaDoctor[];
   video15Min: boolean;
   onVideo: (cita: CitaDoctor) => void;
   onNotas: (cita: CitaDoctor) => void;
   joiningCitaId?: number | null;
+  zonaVisualizacion?: string | null;
 }) {
   const [filtroPaciente, setFiltroPaciente] = useState('');
   const [filtroDesde, setFiltroDesde] = useState('');
@@ -195,6 +199,7 @@ export function DoctorDashboardSection({
                 joining={joiningCitaId === c.cita_id}
                 onVideo={() => onVideo(c)}
                 onNotas={() => onNotas(c)}
+                zonaVisualizacion={zonaVisualizacion}
               />
             ))
           )}
@@ -217,6 +222,7 @@ export function DoctorDashboardSection({
                 video15Min={video15Min}
                 onVideo={() => onVideo(c)}
                 onNotas={() => onNotas(c)}
+                zonaVisualizacion={zonaVisualizacion}
               />
             ))
           )}
@@ -478,7 +484,7 @@ export function DoctorNotasModal({
       <div className="perfil-modal">
         <h3>📝 Notas</h3>
         <p style={{ marginTop: 0, color: '#666', fontSize: '0.9rem' }}>
-          {cita.paciente_nombre} · {formatCitaFecha(cita)} · {formatCitaHora(cita)}
+          {cita.paciente_nombre} · {formatCitaFecha(cita, cita.zona_horaria_psicologo)} · {formatCitaHora(cita, cita.zona_horaria_psicologo)}
         </p>
         <textarea
           rows={8}

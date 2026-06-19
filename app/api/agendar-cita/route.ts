@@ -45,6 +45,9 @@ export async function POST(request: Request) {
       recomendadoPor: body.recomendado_por
         ? String(body.recomendado_por)
         : null,
+      pacienteZonaHoraria: body.zona_horaria_paciente
+        ? String(body.zona_horaria_paciente)
+        : null,
     });
 
     if ('error' in result) {

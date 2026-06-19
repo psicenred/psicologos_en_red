@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { fetchPrecioRegionClient } from '@/lib/geo-client';
+import { getZonaNavegador } from '@/lib/timezone-client';
 import { PerfilGestionCitaFields } from '@/components/features/perfil/PerfilGestionCitaFields';
 
 export function PerfilAgendarDialog({
@@ -68,6 +69,7 @@ export function PerfilAgendarDialog({
           psicologo_id: psicologoId,
           fecha: format(fecha, 'yyyy-MM-dd'),
           hora,
+          zona_horaria_paciente: getZonaNavegador(),
           servicio_interes: 'Sesión de psicoterapia',
           currency,
           success_url: `${window.location.origin}/perfil?pago=exito`,

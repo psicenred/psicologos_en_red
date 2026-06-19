@@ -1,3 +1,6 @@
+import { instanteCita } from '@/lib/citas/timezone';
+import { DURACION_SESION_MS } from '@/lib/citas/cita-timing';
+
 export function normalizarFechaParaEmail(fecha: unknown): string {
   if (fecha == null) return '';
   if (fecha instanceof Date) {
@@ -9,6 +12,7 @@ export function normalizarFechaParaEmail(fecha: unknown): string {
   return match ? match[1] : s.slice(0, 10);
 }
 
+/** @deprecated Usar formatearCitaEnZona con fecha_hora_utc */
 export function formatearFechaParaEmail(fecha: unknown): string {
   const norm = normalizarFechaParaEmail(fecha);
   if (!norm) return '—';
@@ -22,12 +26,24 @@ export function formatearFechaParaEmail(fecha: unknown): string {
   });
 }
 
+function padIcs(n: number): string {
+  return String(n).padStart(2, '0');
+}
+
+function toIcsUtc(d: Date): string {
+  return (
+    `${d.getUTCFullYear()}${padIcs(d.getUTCMonth() + 1)}${padIcs(d.getUTCDate())}` +
+    `T${padIcs(d.getUTCHours())}${padIcs(d.getUTCMinutes())}${padIcs(d.getUTCSeconds())}Z`
+  );
+}
+
 export function generarIcsCita(opciones: {
   citaId?: number | null;
   paciente_id?: number;
   psicologo_id?: number;
   fecha: unknown;
   hora: unknown;
+  fecha_hora_utc?: string | null;
   titulo?: string;
   descripcion?: string;
   accion?: 'crear' | 'cancelar';
@@ -36,14 +52,22 @@ export function generarIcsCita(opciones: {
   const uid = citaId
     ? `cita-${citaId}@psicologosenred.com`
     : `cita-${opciones.paciente_id}-${opciones.psicologo_id}-${normalizarFechaParaEmail(fecha)}-${String(hora || '').replace(/:/g, '')}@psicologosenred.com`;
-  const normFecha = normalizarFechaParaEmail(fecha);
-  const horaPart = (hora != null ? String(hora).trim() : '09:00').substring(0, 5);
-  const [hh, mm] = horaPart.split(':').map((n) => parseInt(n, 10) || 0);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const startDate = new Date(normFecha + 'T' + horaPart + ':00');
-  const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
-  const dtStart = `${normFecha.replace(/-/g, '')}T${pad(hh)}${pad(mm)}00`;
-  const dtEnd = `${endDate.getFullYear()}${pad(endDate.getMonth() + 1)}${pad(endDate.getDate())}T${pad(endDate.getHours())}${pad(endDate.getMinutes())}00`;
+
+  const startDate = instanteCita({
+    fecha_hora_utc: opciones.fecha_hora_utc,
+    fecha,
+    hora,
+  });
+  const endDate = new Date(
+    Number.isNaN(startDate.getTime())
+      ? Date.now() + DURACION_SESION_MS
+      : startDate.getTime() + DURACION_SESION_MS,
+  );
+
+  const dtStart = Number.isNaN(startDate.getTime())
+    ? toIcsUtc(new Date())
+    : toIcsUtc(startDate);
+  const dtEnd = toIcsUtc(endDate);
   const now = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   const safe = (s: string) =>
     (s || '').replace(/\r?\n/g, ' ').replace(/[,;\\]/g, '\\$&');
@@ -53,6 +77,7 @@ export function generarIcsCita(opciones: {
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
       'PRODID:-//Psicólogos en Red//ES',
+      'CALSCALE:GREGORIAN',
       'METHOD:CANCEL',
       'BEGIN:VEVENT',
       'UID:' + uid,
@@ -70,6 +95,7 @@ export function generarIcsCita(opciones: {
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     'PRODID:-//Psicólogos en Red//ES',
+    'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',
     'UID:' + uid,

@@ -3,6 +3,7 @@ import {
   parseCitaInicio,
   puedeUnirseEnVentanaVideo,
 } from '@/lib/citas/cita-timing';
+import { normalizarZonaHoraria } from '@/lib/citas/timezone';
 
 export type CitaDoctor = {
   cita_id: number;
@@ -14,6 +15,7 @@ export type CitaDoctor = {
   notas?: string;
   link_sesion?: string | null;
   fecha_hora_utc?: string | null;
+  zona_horaria_psicologo?: string | null;
   motivo?: string | null;
 };
 
@@ -25,15 +27,60 @@ export function getCitaDateTime(cita: CitaDoctor): Date {
   });
 }
 
-export function formatCitaFecha(cita: CitaDoctor): string {
-  const d = getCitaDateTime(cita);
-  if (Number.isNaN(d.getTime())) return String(cita.fecha || '').slice(0, 10) || '—';
-  return d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+function zonaDoctor(cita: CitaDoctor, override?: string | null): string | undefined {
+  const z = override || cita.zona_horaria_psicologo;
+  return z ? normalizarZonaHoraria(z) : undefined;
 }
 
-export function formatCitaHora(cita: CitaDoctor): string {
+export function formatCitaFecha(
+  cita: CitaDoctor,
+  timeZone?: string | null,
+): string {
   const d = getCitaDateTime(cita);
-  if (Number.isNaN(d.getTime())) return String(cita.hora || '').slice(0, 5) || '—';
+  const tz = zonaDoctor(cita, timeZone);
+  if (!Number.isNaN(d.getTime()) && tz) {
+    try {
+      return d.toLocaleDateString('es-MX', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        timeZone: tz,
+      });
+    } catch {
+      /* fallback */
+    }
+  }
+  if (Number.isNaN(d.getTime())) {
+    return String(cita.fecha || '').slice(0, 10) || '—';
+  }
+  return d.toLocaleDateString('es-MX', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+}
+
+export function formatCitaHora(
+  cita: CitaDoctor,
+  timeZone?: string | null,
+): string {
+  const d = getCitaDateTime(cita);
+  const tz = zonaDoctor(cita, timeZone);
+  if (!Number.isNaN(d.getTime()) && tz) {
+    try {
+      return d.toLocaleTimeString('es-MX', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        timeZone: tz,
+      });
+    } catch {
+      /* fallback */
+    }
+  }
+  if (Number.isNaN(d.getTime())) {
+    return String(cita.hora || '').slice(0, 5) || '—';
+  }
   return d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 }
 

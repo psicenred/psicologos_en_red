@@ -36,6 +36,9 @@ export async function POST(request: Request) {
       citaId,
       fecha,
       hora,
+      pacienteZonaHoraria: body.zona_horaria_paciente
+        ? String(body.zona_horaria_paciente)
+        : null,
     });
 
     if ('error' in result) {

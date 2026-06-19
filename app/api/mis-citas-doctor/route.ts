@@ -24,9 +24,14 @@ export async function GET(request: Request) {
         u.nombre AS paciente_nombre,
         u.id AS paciente_usuario_id,
         u.id AS id_para_chat,
-        ((c.fecha + c.hora) AT TIME ZONE COALESCE(NULLIF(TRIM(c.zona_horaria), ''), 'America/Mexico_City')) AS fecha_hora_utc
+        COALESCE(
+          NULLIF(TRIM(c.fecha_hora_utc), ''),
+          ((c.fecha + c.hora) AT TIME ZONE COALESCE(NULLIF(TRIM(c.zona_horaria), ''), 'America/Mexico_City'))::timestamptz::text
+        ) AS fecha_hora_utc,
+        COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') AS zona_horaria_psicologo
       FROM citas c
       JOIN vista_psicologos v ON c.psicologo_id = v.psicologo_id_tabla
+      JOIN psicologos p ON c.psicologo_id = p.id
       JOIN usuarios u ON c.paciente_id = u.id
       WHERE v.usuario_id = $1
       ORDER BY c.fecha ASC, c.hora ASC`;
@@ -36,7 +41,7 @@ export async function GET(request: Request) {
       result = await query(sqlConTz, [auth.id]);
     } catch (e) {
       const msg = (e as Error).message || '';
-      if (msg.includes('zona_horaria')) {
+      if (msg.includes('zona_horaria') || msg.includes('fecha_hora_utc')) {
         result = await query(
           `SELECT c.id AS cita_id, c.fecha, c.hora, c.estado, c.link_sesion, c.notas,
                   c.motivo_de_consulta AS motivo,

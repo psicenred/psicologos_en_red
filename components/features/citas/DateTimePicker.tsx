@@ -6,6 +6,7 @@ import { es } from 'date-fns/locale';
 import { format } from 'date-fns';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { formatHoraLocalDesdeIso } from '@/lib/timezone-client';
 
 export function DateTimePicker({
   psicologoId,
@@ -23,6 +24,7 @@ export function DateTimePicker({
   const [disabledDays, setDisabledDays] = useState<number[]>([]);
   const [blockedDates, setBlockedDates] = useState<string[]>([]);
   const [horarios, setHorarios] = useState<string[]>([]);
+  const [horariosIso, setHorariosIso] = useState<string[]>([]);
   const [availMsg, setAvailMsg] = useState('');
 
   useEffect(() => {
@@ -38,18 +40,40 @@ export function DateTimePicker({
   useEffect(() => {
     if (!fecha) {
       setHorarios([]);
+      setHorariosIso([]);
       setHora('');
+      setAvailMsg('');
       return;
     }
     const fechaStr = format(fecha, 'yyyy-MM-dd');
     fetch(`/api/horarios-disponibles/${psicologoId}?fecha=${fechaStr}`)
       .then((r) => r.json())
       .then((data) => {
-        setHorarios(data.horarios || []);
+        if (!data.disponible || !data.horarios?.length) {
+          setHorarios([]);
+          setHorariosIso([]);
+          setHora('');
+          setAvailMsg(data.mensaje || 'No hay horarios disponibles.');
+          return;
+        }
+        const iso =
+          data.horarios_iso &&
+          Array.isArray(data.horarios_iso) &&
+          data.horarios_iso.length === data.horarios.length
+            ? data.horarios_iso
+            : [];
+        setHorarios(data.horarios);
+        setHorariosIso(iso);
         setHora('');
-        setAvailMsg(data.disponible === false ? data.mensaje || '' : '');
+        setAvailMsg(
+          `${data.horarios.length} horario(s) disponible(s) (en tu hora local)`,
+        );
       })
-      .catch(() => setHorarios([]));
+      .catch(() => {
+        setHorarios([]);
+        setHorariosIso([]);
+        setAvailMsg('');
+      });
   }, [fecha, psicologoId, setHora]);
 
   function isDateDisabled(day: Date) {
@@ -73,12 +97,14 @@ export function DateTimePicker({
       {fecha ? (
         <div>
           <Label>Horario</Label>
-          {availMsg ? <p className="text-sm text-muted-foreground">{availMsg}</p> : null}
+          {availMsg ? (
+            <p className="text-sm text-muted-foreground">{availMsg}</p>
+          ) : null}
           {horarios.length === 0 && !availMsg ? (
             <p className="text-sm text-muted-foreground">Sin horarios para esta fecha.</p>
           ) : (
             <div className="mt-2 flex flex-wrap gap-2">
-              {horarios.map((h) => (
+              {horarios.map((h, i) => (
                 <Button
                   key={h}
                   type="button"
@@ -86,7 +112,7 @@ export function DateTimePicker({
                   variant={hora === h ? 'default' : 'outline'}
                   onClick={() => setHora(h)}
                 >
-                  {h}
+                  {formatHoraLocalDesdeIso(h, horariosIso[i] ?? null)}
                 </Button>
               ))}
             </div>
