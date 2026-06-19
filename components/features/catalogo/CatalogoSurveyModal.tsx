@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/routing';
+import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 
 type SurveyOption = { text: string; value: string };
 
@@ -41,17 +42,15 @@ export function CatalogoSurveyModal({
     reset();
   }
 
+  useBodyScrollLock(open);
+
   useEffect(() => {
     if (!open) return;
-    document.body.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close();
     };
     window.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = '';
-      window.removeEventListener('keydown', onKey);
-    };
+    return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
   const [answers, setAnswers] = useState<(string | null)[]>([null, null, null, null, null]);

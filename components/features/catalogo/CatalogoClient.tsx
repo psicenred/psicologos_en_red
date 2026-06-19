@@ -8,6 +8,7 @@ import { CatalogoSurveyModal } from '@/components/features/catalogo/CatalogoSurv
 import { PerfilPsicologoModal } from '@/components/features/catalogo/PerfilPsicologoModal';
 import { fetchJsonArray } from '@/lib/fetch-api';
 import { fetchPrecioRegionClient } from '@/lib/geo-client';
+import { releaseAllBodyScrollLocks } from '@/lib/hooks/useBodyScrollLock';
 import { minSessionPrice } from '@/lib/catalog-pricing';
 import { asStringArray } from '@/lib/pg-arrays';
 import { PRECIOS_DEFAULT_MXN, PRECIOS_DEFAULT_USD } from '@/lib/geo';
@@ -245,6 +246,7 @@ export function CatalogoClient() {
 
   const closeProfile = useCallback(() => {
     setProfileId(null);
+    requestAnimationFrame(() => releaseAllBodyScrollLocks());
     if (typeof window !== 'undefined' && searchParams.get('ver')) {
       const url = new URL(window.location.href);
       url.searchParams.delete('ver');
@@ -252,9 +254,18 @@ export function CatalogoClient() {
     }
   }, [searchParams]);
 
+  const openProfile = useCallback((id: number) => {
+    setProfileId(id);
+  }, []);
+
   const openAgendarFromProfile = useCallback((p: Psicologo) => {
     setAgendarTarget(p);
   }, []);
+
+  const selectedPsicologo = useMemo(() => {
+    if (profileId === null) return null;
+    return list.find((p) => p.id === profileId) ?? null;
+  }, [list, profileId]);
 
   const loadPsicologos = useCallback(async (inMexico: boolean | null) => {
     const url =
@@ -590,7 +601,7 @@ export function CatalogoClient() {
               p={p}
               currency={region.currency}
               t={t}
-              onProfile={() => setProfileId(p.id)}
+              onProfile={() => openProfile(p.id)}
               onBook={() => setAgendarTarget(p)}
             />
           ))}
@@ -603,14 +614,13 @@ export function CatalogoClient() {
 
       <CatalogoSurveyModal open={surveyOpen} onClose={() => setSurveyOpen(false)} />
 
-      {profileId !== null ? (
-        <PerfilPsicologoModal
-          key={profileId}
-          psicologoId={profileId}
-          onClose={closeProfile}
-          onAgendar={openAgendarFromProfile}
-        />
-      ) : null}
+      <PerfilPsicologoModal
+        open={profileId !== null}
+        psicologoId={profileId}
+        initialPsicologo={selectedPsicologo}
+        onClose={closeProfile}
+        onAgendar={openAgendarFromProfile}
+      />
 
       <AgendarDialog
         psicologo={agendarTarget}

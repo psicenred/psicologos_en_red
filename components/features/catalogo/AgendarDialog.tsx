@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { DateTimePicker } from '@/components/features/citas/DateTimePicker';
 import { minSessionPrice } from '@/lib/catalog-pricing';
+import { releaseAllBodyScrollLocks } from '@/lib/hooks/useBodyScrollLock';
 import type { Psicologo } from '@/components/features/catalogo/CatalogoClient';
 
 type RegionState = {
@@ -65,6 +66,12 @@ export function AgendarDialog({
       setPrecio(null);
     }
   }, [open, psicologo, region]);
+
+  useEffect(() => {
+    if (open) return;
+    const id = requestAnimationFrame(() => releaseAllBodyScrollLocks());
+    return () => cancelAnimationFrame(id);
+  }, [open]);
 
   async function confirmar() {
     if (!psicologo || !fecha || !hora) return;

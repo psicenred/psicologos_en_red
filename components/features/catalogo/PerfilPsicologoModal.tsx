@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import type { Psicologo } from '@/components/features/catalogo/CatalogoClient';
 import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
@@ -36,77 +37,96 @@ function initials(nombre: string) {
 }
 
 export function PerfilPsicologoModal({
+  open,
   psicologoId,
+  initialPsicologo,
   onClose,
   onAgendar,
 }: {
-  psicologoId: number;
+  open: boolean;
+  psicologoId: number | null;
+  initialPsicologo: Psicologo | null;
   onClose: () => void;
   onAgendar: (p: Psicologo) => void;
 }) {
   const t = useTranslations('catalog');
-  const [data, setData] = useState<{ datos: Psicologo; opiniones: Opinion[] } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+  const [profile, setProfile] = useState<Psicologo | null>(initialPsicologo);
+  const [opiniones, setOpiniones] = useState<Opinion[]>([]);
+  const [loadingOpiniones, setLoadingOpiniones] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const onCloseRef = useRef(onClose);
+  const requestSeqRef = useRef(0);
 
   onCloseRef.current = onClose;
 
-  useBodyScrollLock(true);
+  useBodyScrollLock(open);
 
   useEffect(() => {
-    const controller = new AbortController();
-    let cancelled = false;
+    setMounted(true);
+  }, []);
 
-    setData(null);
+  useEffect(() => {
+    if (!open || psicologoId === null) return;
+
+    const seq = ++requestSeqRef.current;
+    setProfile(initialPsicologo);
+    setOpiniones([]);
     setLoadError(false);
-    setLoading(true);
+    setLoadingOpiniones(true);
+
+    const controller = new AbortController();
 
     fetch(`/api/psicologo/${psicologoId}`, { signal: controller.signal })
       .then(async (r) => {
         if (!r.ok) throw new Error('fail');
         return r.json();
       })
-      .then((json) => {
-        if (cancelled) return;
-        setData(json);
+      .then((json: { datos: Psicologo; opiniones: Opinion[] }) => {
+        if (seq !== requestSeqRef.current) return;
+        setProfile(json.datos ?? initialPsicologo);
+        setOpiniones(json.opiniones ?? []);
       })
       .catch((err: unknown) => {
-        if (cancelled || (err instanceof DOMException && err.name === 'AbortError')) return;
-        setData(null);
-        setLoadError(true);
+        if (seq !== requestSeqRef.current) return;
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        if (!initialPsicologo) setLoadError(true);
+        setOpiniones([]);
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (seq === requestSeqRef.current) setLoadingOpiniones(false);
       });
 
     return () => {
-      cancelled = true;
       controller.abort();
     };
-  }, [psicologoId]);
+  }, [open, psicologoId, initialPsicologo]);
 
   useEffect(() => {
+    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onCloseRef.current();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [open]);
 
-  const p = data?.datos;
+  if (!open || psicologoId === null || !mounted) return null;
 
-  return (
+  const p = profile;
+
+  const content = (
     <div
-      className="modal-overlay"
+      className="catalogo-perfil-overlay"
       style={{
         display: 'flex',
         position: 'fixed',
         inset: 0,
         background: 'rgba(0,0,0,0.7)',
-        zIndex: 2000,
+        zIndex: 10000,
         alignItems: 'center',
         justifyContent: 'center',
+        padding: 16,
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -114,16 +134,20 @@ export function PerfilPsicologoModal({
     >
       <div
         className="perfil-card-detalle"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="catalogo-perfil-nombre"
         style={{
           background: 'white',
-          width: '90%',
+          width: '100%',
           maxWidth: 500,
           borderRadius: 20,
           position: 'relative',
-          maxHeight: '85vh',
+          maxHeight: 'min(85vh, 85svh)',
           display: 'flex',
           flexDirection: 'column',
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
@@ -145,9 +169,7 @@ export function PerfilPsicologoModal({
         </button>
 
         <div className="perfil-scroll-content" style={{ padding: 30, overflowY: 'auto' }}>
-          {loading ? (
-            <p style={{ textAlign: 'center', color: '#666' }}>{t('loading')}</p>
-          ) : loadError || !p ? (
+          {loadError || !p ? (
             <div style={{ textAlign: 'center' }}>
               <p style={{ color: '#666', marginBottom: 16 }}>{t('profileLoadError')}</p>
               <button
@@ -191,7 +213,10 @@ export function PerfilPsicologoModal({
                 >
                   {p.imagen_url ? null : (p.nombre?.charAt(0).toUpperCase() || '?')}
                 </div>
-                <h2 style={{ margin: 0, color: 'var(--texto-oscuro)', fontSize: '1.5rem' }}>
+                <h2
+                  id="catalogo-perfil-nombre"
+                  style={{ margin: 0, color: 'var(--texto-oscuro)', fontSize: '1.5rem' }}
+                >
                   {p.nombre}
                 </h2>
                 <p
@@ -285,8 +310,10 @@ export function PerfilPsicologoModal({
                     color: '#555',
                   }}
                 >
-                  {data?.opiniones?.length ? (
-                    data.opiniones.map((o) => (
+                  {loadingOpiniones ? (
+                    <p style={{ color: '#aaa', fontSize: '0.9rem', margin: 0 }}>{t('loading')}</p>
+                  ) : opiniones.length ? (
+                    opiniones.map((o) => (
                       <div key={`${o.fecha}-${o.paciente_nombre}`} className="det-opinion-item">
                         <div className="det-opinion-meta">
                           <strong style={{ color: 'var(--texto-oscuro)' }}>
@@ -330,4 +357,6 @@ export function PerfilPsicologoModal({
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 }
