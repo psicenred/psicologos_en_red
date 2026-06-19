@@ -49,6 +49,40 @@ export function getSessionOptions(): SessionOptions {
   };
 }
 
+/** Rutas donde pudo quedar una cookie legacy con Path distinto de `/`. */
+const LEGACY_SESSION_PATHS = [
+  '/',
+  '/panel-doctor',
+  '/panel-admin',
+  '/perfil',
+  '/api',
+  '/api/auth',
+  '/api/auth/login',
+  '/api/admin',
+  '/api/admin/citas',
+];
+
+export function clearLegacySessionCookies(response: NextResponse) {
+  const options = getSessionOptions();
+  const name = options.cookieName ?? 'psic-en-red-session';
+  for (const path of LEGACY_SESSION_PATHS) {
+    response.cookies.set(name, '', {
+      ...options.cookieOptions,
+      path,
+      maxAge: 0,
+    });
+  }
+}
+
+async function clearLegacySessionCookiesFromStore() {
+  const options = getSessionOptions();
+  const name = options.cookieName ?? 'psic-en-red-session';
+  const cookieStore = await cookies();
+  for (const path of LEGACY_SESSION_PATHS) {
+    cookieStore.set(name, '', { ...options.cookieOptions, path, maxAge: 0 });
+  }
+}
+
 async function readSessionFromRequest(request: Request) {
   return getIronSession<SessionData>(request, new NextResponse(), getSessionOptions());
 }
@@ -62,21 +96,26 @@ async function readSessionFromCookieHeader(cookieHeader: string) {
 }
 
 export async function getSession(request?: Request) {
-  if (request) {
-    return readSessionFromRequest(request);
-  }
-
   const options = getSessionOptions();
   const cookieName = options.cookieName ?? 'psic-en-red-session';
+
+  // Patrón recomendado por iron-session en App Router: cookies() primero.
+  const cookieStore = await cookies();
+  const fromStore = await getIronSession<SessionData>(cookieStore, options);
+  if (fromStore.usuario) return fromStore;
 
   const headerStore = await headers();
   const cookieHeader = headerStore.get('cookie');
   if (cookieHeader?.includes(cookieName)) {
-    return readSessionFromCookieHeader(cookieHeader);
+    const fromHeaders = await readSessionFromCookieHeader(cookieHeader);
+    if (fromHeaders.usuario) return fromHeaders;
   }
 
-  const cookieStore = await cookies();
-  return getIronSession<SessionData>(cookieStore, options);
+  if (request) {
+    return readSessionFromRequest(request);
+  }
+
+  return fromStore;
 }
 
 export async function getSessionFromRequest(request: Request) {
@@ -89,17 +128,20 @@ export async function saveSessionOnResponse(
   response: NextResponse,
   usuario: SessionUsuario,
 ) {
+  clearLegacySessionCookies(response);
   const session = await getIronSession<SessionData>(request, response, getSessionOptions());
   session.usuario = usuario;
   await session.save();
 }
 
 export async function destroySessionOnResponse(request: Request, response: NextResponse) {
+  clearLegacySessionCookies(response);
   const session = await getIronSession<SessionData>(request, response, getSessionOptions());
   session.destroy();
 }
 
 export async function setSessionUsuario(usuario: SessionUsuario) {
+  await clearLegacySessionCookiesFromStore();
   const session = await getSession();
   session.usuario = usuario;
   await session.save();
@@ -114,6 +156,7 @@ export async function updateSessionNombre(nombre: string) {
 }
 
 export async function destroySession() {
+  await clearLegacySessionCookiesFromStore();
   const session = await getSession();
   session.destroy();
 }

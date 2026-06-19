@@ -69,6 +69,12 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Re-emite la cookie con Path=/ en cada navegación autenticada para que
+  // los fetch a /api/* también reciban psic-en-red-session.
+  if (session.usuario) {
+    await session.save();
+  }
+
   return response;
 }
 

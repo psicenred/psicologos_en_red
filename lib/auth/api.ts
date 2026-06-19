@@ -8,8 +8,8 @@ import {
 } from '@/lib/session';
 import { getPsicologoIdFromUsuarioId } from '@/lib/psicologo/id';
 
-export async function getAuthUsuario(request?: Request): Promise<SessionUsuario | null> {
-  const session = await getSession(request);
+export async function getAuthUsuario(_request?: Request): Promise<SessionUsuario | null> {
+  const session = await getSession();
   return session.usuario ?? null;
 }
 
