@@ -1,3 +1,9 @@
+import {
+  esCitaActiva,
+  parseCitaInicio,
+  puedeUnirseEnVentanaVideo,
+} from '@/lib/citas/cita-timing';
+
 export type CitaDoctor = {
   cita_id: number;
   fecha: string;
@@ -12,13 +18,11 @@ export type CitaDoctor = {
 };
 
 export function getCitaDateTime(cita: CitaDoctor): Date {
-  if (cita.fecha_hora_utc) {
-    const d = new Date(cita.fecha_hora_utc);
-    if (!Number.isNaN(d.getTime())) return d;
-  }
-  const fecha = String(cita.fecha || '').slice(0, 10);
-  const hora = String(cita.hora || '00:00').slice(0, 5);
-  return new Date(`${fecha}T${hora}`);
+  return parseCitaInicio({
+    fecha_hora_utc: cita.fecha_hora_utc,
+    fecha: cita.fecha,
+    hora: cita.hora,
+  });
 }
 
 export function formatCitaFecha(cita: CitaDoctor): string {
@@ -36,11 +40,7 @@ export function formatCitaHora(cita: CitaDoctor): string {
 export function esCitaFutura(cita: CitaDoctor, ahora = new Date()): boolean {
   const estado = (cita.estado || '').toLowerCase();
   if (['cancelada', 'realizada', 'no realizada'].includes(estado)) return false;
-  const d = getCitaDateTime(cita);
-  if (Number.isNaN(d.getTime())) return true;
-  const fin = new Date(d);
-  fin.setHours(fin.getHours() + 1);
-  return fin >= ahora;
+  return esCitaActiva(getCitaDateTime(cita), ahora);
 }
 
 export function splitCitasDoctor(citas: CitaDoctor[]) {
@@ -55,10 +55,7 @@ export function splitCitasDoctor(citas: CitaDoctor[]) {
 export function puedeUnirseVideo(cita: CitaDoctor, video15Min: boolean): boolean {
   const estado = (cita.estado || '').toLowerCase();
   if (['cancelada', 'no realizada'].includes(estado)) return false;
-  if (!video15Min) return true;
-  const inicio = getCitaDateTime(cita).getTime();
-  const ahora = Date.now();
-  return ahora >= inicio - 15 * 60 * 1000 && ahora <= inicio + 60 * 60 * 1000;
+  return puedeUnirseEnVentanaVideo(getCitaDateTime(cita), video15Min);
 }
 
 export function diasSinCita(
