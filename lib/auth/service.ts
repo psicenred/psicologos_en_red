@@ -321,3 +321,43 @@ export async function updatePasswordWithToken(token: string, password: string) {
   );
   return { success: true as const };
 }
+
+export type UpdateProfileInput = {
+  nombre: string;
+  telefono?: string | null;
+  contacto_emergencia?: string | null;
+  password?: string;
+};
+
+export async function updateUsuarioProfile(
+  usuarioId: number,
+  currentNombre: string,
+  input: UpdateProfileInput,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const nombre = input.nombre?.trim() || currentNombre;
+  const telefono = input.telefono?.trim() || null;
+  const contactoEmerg =
+    input.contacto_emergencia != null && String(input.contacto_emergencia).trim() !== ''
+      ? String(input.contacto_emergencia).trim().slice(0, 255)
+      : null;
+  const password = input.password;
+
+  try {
+    if (password && password.trim() !== '' && password !== '********') {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await query(
+        'UPDATE usuarios SET nombre = $1, telefono = $2, contacto_emergencia = $3, password = $4 WHERE id = $5',
+        [nombre, telefono, contactoEmerg, hashedPassword, usuarioId],
+      );
+    } else {
+      await query(
+        'UPDATE usuarios SET nombre = $1, telefono = $2, contacto_emergencia = $3 WHERE id = $4',
+        [nombre, telefono, contactoEmerg, usuarioId],
+      );
+    }
+    return { ok: true };
+  } catch (error) {
+    console.error('updateUsuarioProfile:', error);
+    return { ok: false, error: 'Error al actualizar el perfil' };
+  }
+}

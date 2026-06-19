@@ -12,6 +12,7 @@ import {
   formatHora,
 } from '@/components/features/admin/admin-helpers';
 import { apiErrorMessage } from '@/lib/fetch-api';
+import { updatePsicologoVisibilidadAction, saveAdminVideoConfigAction, updateAdminProfileAction } from '@/lib/admin/actions';
 import type { AdminPanelInitialData } from '@/lib/admin/types';
 
 const SERVER_BACKED_QUERY = {
@@ -410,6 +411,7 @@ export function AdminPsicologosSection({
   const qc = useQueryClient();
   const router = useRouter();
   const [busqueda, setBusqueda] = useState('');
+  const [visibilidadError, setVisibilidadError] = useState<string | null>(null);
 
   const {
     data: psicologos = [],
@@ -444,15 +446,25 @@ export function AdminPsicologosSection({
     const vm = campo === 'visible_mexico' ? !valor : Boolean(psi.visible_mexico);
     const vi =
       campo === 'visible_internacional' ? !valor : Boolean(psi.visible_internacional);
-    await fetch(`/api/admin/psicologos/${id}/visibilidad`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        visible_mexico: vm,
-        visible_internacional: vi,
-      }),
-    });
-    qc.invalidateQueries({ queryKey: ['admin-psicologos'] });
+
+    setVisibilidadError(null);
+    const result = await updatePsicologoVisibilidadAction(id, vm, vi);
+    if (!result.ok) {
+      setVisibilidadError(result.error);
+      return;
+    }
+
+    qc.setQueryData(['admin-psicologos'], (old: Record<string, unknown>[] | undefined) =>
+      (old ?? []).map((p) =>
+        Number(p.id) === id
+          ? {
+              ...p,
+              visible_mexico: result.data.visible_mexico,
+              visible_internacional: result.data.visible_internacional,
+            }
+          : p,
+      ),
+    );
     router.refresh();
   }
 
@@ -475,6 +487,9 @@ export function AdminPsicologosSection({
           <p style={{ color: '#888' }}>Cargando psicólogos…</p>
         ) : isError ? (
           <p style={{ color: '#c0392b' }}>{apiErrorMessage(error)}</p>
+        ) : null}
+        {visibilidadError ? (
+          <p style={{ color: '#c0392b', marginBottom: '0.75rem' }}>{visibilidadError}</p>
         ) : null}
         <table>
           <thead>
@@ -923,53 +938,39 @@ export function AdminBlogSection({
   );
 }
 
-export function AdminConfigSection() {
+export function AdminConfigSection({
+  initialData,
+}: {
+  initialData?: AdminPanelInitialData | null;
+}) {
+  const profile = initialData?.config?.profile;
   const [editing, setEditing] = useState(false);
-  const [nombre, setNombre] = useState('');
-  const [email, setEmail] = useState('');
-  const [telefono, setTelefono] = useState('');
+  const [nombre, setNombre] = useState(profile?.nombre ?? '');
+  const [email, setEmail] = useState(profile?.email ?? '');
+  const [telefono, setTelefono] = useState(profile?.telefono ?? '');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
-  const [video15, setVideo15] = useState(true);
+  const [video15, setVideo15] = useState(initialData?.config?.video_boton_15min ?? true);
   const [videoMsg, setVideoMsg] = useState('');
   const [profileMsg, setProfileMsg] = useState('');
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    fetch('/api/user-data')
-      .then((r) => r.json())
-      .then((d) => {
-        setNombre(d.nombre || '');
-        setEmail(d.email || '');
-        setTelefono(d.telefono || '');
-      })
-      .catch(() => undefined);
-    fetch('/api/admin/config')
-      .then((r) => r.json())
-      .then((d) => setVideo15(d.video_boton_15min !== false))
-      .catch(() => undefined);
-  }, []);
 
   async function guardarPerfil(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     setProfileMsg('');
     try {
-      const res = await fetch('/api/update-profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nombre,
-          telefono,
-          password: password || undefined,
-        }),
+      const result = await updateAdminProfileAction({
+        nombre,
+        telefono,
+        password: password || undefined,
       });
-      if (res.ok) {
+      if (result.ok) {
         setProfileMsg('✅ Perfil actualizado');
         setEditing(false);
         setPassword('');
       } else {
-        setProfileMsg('❌ Error al guardar');
+        setProfileMsg(`❌ ${result.error}`);
       }
     } finally {
       setSaving(false);
@@ -978,12 +979,10 @@ export function AdminConfigSection() {
 
   async function guardarVideoConfig() {
     setVideoMsg('');
-    const res = await fetch('/api/admin/config', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ video_boton_15min: video15 }),
-    });
-    setVideoMsg(res.ok ? '✅ Configuración guardada' : '❌ Error al guardar');
+    const result = await saveAdminVideoConfigAction(video15);
+    setVideoMsg(
+      result.ok ? '✅ Configuración guardada' : `❌ ${result.error}`,
+    );
   }
 
   return (

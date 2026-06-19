@@ -229,6 +229,49 @@ export async function listAdminCartera(): Promise<AdminCarteraItem[]> {
   return resultado;
 }
 
+export async function loadAdminPlatformConfig(): Promise<{ video_boton_15min: boolean }> {
+  try {
+    const r = await query(
+      "SELECT valor FROM config_plataforma WHERE clave = 'video_boton_15min' LIMIT 1",
+    );
+    const val = (r.rows[0] as { valor?: string } | undefined)?.valor;
+    return { video_boton_15min: val !== 'false' && val !== '0' };
+  } catch {
+    return { video_boton_15min: true };
+  }
+}
+
+export async function saveAdminVideoBoton15Min(activar15Min: boolean) {
+  await query(
+    `INSERT INTO config_plataforma (clave, valor) VALUES ('video_boton_15min', $1)
+     ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor`,
+    [activar15Min ? 'true' : 'false'],
+  );
+  return { video_boton_15min: activar15Min };
+}
+
+export async function loadUsuarioTelefono(usuarioId: number): Promise<string> {
+  const result = await query('SELECT telefono FROM usuarios WHERE id = $1', [usuarioId]);
+  return String((result.rows[0] as { telefono?: string } | undefined)?.telefono ?? '');
+}
+
+export async function updateAdminPsicologoVisibilidad(
+  id: number,
+  visibleMexico: boolean,
+  visibleInternacional: boolean,
+) {
+  const result = await query(
+    `UPDATE psicologos
+     SET visible_mexico = $1, visible_internacional = $2
+     WHERE id = $3
+     RETURNING id, visible_mexico, visible_internacional`,
+    [visibleMexico, visibleInternacional, id],
+  );
+  return result.rows[0] as
+    | { id: number; visible_mexico: boolean; visible_internacional: boolean }
+    | undefined;
+}
+
 export async function listAdminBlogArticles() {
   try {
     const result = await query(BLOG_LIST_SQL);

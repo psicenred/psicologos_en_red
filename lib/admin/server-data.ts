@@ -9,6 +9,8 @@ import {
   listAdminCitas,
   listAdminPacientes,
   listAdminPsicologos,
+  loadAdminPlatformConfig,
+  loadUsuarioTelefono,
 } from '@/lib/admin/queries';
 import type { AdminPanelInitialData } from '@/lib/admin/types';
 import { isDatabaseConfigured } from '@/lib/db';
@@ -24,13 +26,16 @@ export async function loadAdminPanelData(): Promise<AdminPanelInitialData | null
     redirect('/login?next=/panel-admin');
   }
 
-  const [stats, citas, cartera, psicologos, pacientes, blog] = await Promise.all([
+  const [stats, citas, cartera, psicologos, pacientes, blog, platformConfig, telefono] =
+    await Promise.all([
     loadAdminEstadisticas(),
     listAdminCitas(),
     listAdminCartera(),
     listAdminPsicologos(),
     listAdminPacientes(),
     listAdminBlogArticles(),
+    loadAdminPlatformConfig(),
+    loadUsuarioTelefono(session.usuario.id),
   ]);
 
   return {
@@ -40,5 +45,13 @@ export async function loadAdminPanelData(): Promise<AdminPanelInitialData | null
     psicologos: psicologos as Record<string, unknown>[],
     pacientes: pacientes as Record<string, unknown>[],
     blog: blog as Record<string, unknown>[],
+    config: {
+      video_boton_15min: platformConfig.video_boton_15min,
+      profile: {
+        nombre: session.usuario.nombre,
+        email: session.usuario.email,
+        telefono,
+      },
+    },
   };
 }

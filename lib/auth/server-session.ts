@@ -16,6 +16,8 @@ export function isAdmin(usuario: SessionUsuario): boolean {
   return normalizeRol(usuario.rol) === 'admin';
 }
 
-export function isPsicologo(usuario: SessionUsuario): boolean {
-  return normalizeRol(usuario.rol) === 'psicologo';
+export async function requireAdminSession(): Promise<SessionUsuario | null> {
+  const usuario = await getSessionUsuario();
+  if (!usuario || !isAdmin(usuario)) return null;
+  return usuario;
 }

@@ -26,7 +26,7 @@ export function PanelAdminApp({
       {section === 'psicologos' && <AdminPsicologosSection initialData={initialData} />}
       {section === 'pacientes' && <AdminPacientesSection initialData={initialData} />}
       {section === 'blog' && <AdminBlogSection initialData={initialData} />}
-      {section === 'configuracion' && <AdminConfigSection />}
+      {section === 'configuracion' && <AdminConfigSection initialData={initialData} />}
     </AdminShell>
   );
 }
