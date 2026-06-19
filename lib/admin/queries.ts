@@ -242,12 +242,20 @@ export async function loadAdminPlatformConfig(): Promise<{ video_boton_15min: bo
 }
 
 export async function saveAdminVideoBoton15Min(activar15Min: boolean) {
-  await query(
-    `INSERT INTO config_plataforma (clave, valor) VALUES ('video_boton_15min', $1)
-     ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor`,
-    [activar15Min ? 'true' : 'false'],
-  );
-  return { video_boton_15min: activar15Min };
+  try {
+    await query(
+      `INSERT INTO config_plataforma (clave, valor) VALUES ('video_boton_15min', $1)
+       ON CONFLICT (clave) DO UPDATE SET valor = EXCLUDED.valor`,
+      [activar15Min ? 'true' : 'false'],
+    );
+    return { video_boton_15min: activar15Min };
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    if (code === '42P01') {
+      throw new Error('missing_config_plataforma_table');
+    }
+    throw error;
+  }
 }
 
 export async function loadUsuarioTelefono(usuarioId: number): Promise<string> {

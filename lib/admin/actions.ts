@@ -25,12 +25,12 @@ async function requireAdminMutation(
   return adminUserId;
 }
 
-export async function updatePsicologoVisibilidadAction(
-  mutationToken: string,
-  id: number,
-  visibleMexico: boolean,
-  visibleInternacional: boolean,
-): Promise<
+export async function updatePsicologoVisibilidadAction(input: {
+  mutationToken: string;
+  id: number;
+  visibleMexico: boolean;
+  visibleInternacional: boolean;
+}): Promise<
   AdminActionResult<{
     id: number;
     visible_mexico: boolean;
@@ -42,17 +42,23 @@ export async function updatePsicologoVisibilidadAction(
       return { ok: false, error: 'Base de datos no configurada' };
     }
 
-    const admin = await requireAdminMutation(mutationToken);
+    const token = input.mutationToken?.trim();
+    if (!token) {
+      return { ok: false, error: SESSION_EXPIRED_MSG };
+    }
+
+    const admin = await requireAdminMutation(token);
     if (typeof admin !== 'number') return admin;
 
+    const id = input.id;
     if (!Number.isFinite(id) || id <= 0) {
       return { ok: false, error: 'ID inválido' };
     }
 
     const row = await updateAdminPsicologoVisibilidad(
       id,
-      visibleMexico,
-      visibleInternacional,
+      input.visibleMexico === true,
+      input.visibleInternacional === true,
     );
     if (!row) return { ok: false, error: 'Psicólogo no encontrado' };
 
@@ -77,40 +83,55 @@ export async function updatePsicologoVisibilidadAction(
   }
 }
 
-export async function saveAdminVideoConfigAction(
-  mutationToken: string,
-  videoBoton15min: boolean,
-): Promise<AdminActionResult<{ video_boton_15min: boolean }>> {
+export async function saveAdminVideoConfigAction(input: {
+  mutationToken: string;
+  videoBoton15min: boolean;
+}): Promise<AdminActionResult<{ video_boton_15min: boolean }>> {
   try {
     if (!isDatabaseConfigured()) {
       return { ok: false, error: 'Base de datos no configurada' };
     }
 
-    const admin = await requireAdminMutation(mutationToken);
+    const token = input.mutationToken?.trim();
+    if (!token) {
+      return { ok: false, error: SESSION_EXPIRED_MSG };
+    }
+
+    const admin = await requireAdminMutation(token);
     if (typeof admin !== 'number') return admin;
 
+    const videoBoton15min = input.videoBoton15min === true;
     const data = await saveAdminVideoBoton15Min(videoBoton15min);
     return { ok: true, data: { video_boton_15min: Boolean(data.video_boton_15min) } };
   } catch (error) {
+    if (error instanceof Error && error.message === 'missing_config_plataforma_table') {
+      return {
+        ok: false,
+        error: 'Falta la tabla config_plataforma. Ejecuta la migración SQL correspondiente.',
+      };
+    }
     console.error('saveAdminVideoConfigAction:', error);
     return { ok: false, error: 'Error al guardar la configuración' };
   }
 }
 
-export async function updateAdminProfileAction(
-  mutationToken: string,
-  input: {
-    nombre: string;
-    telefono?: string;
-    password?: string;
-  },
-): Promise<AdminActionResult<{ success: true }>> {
+export async function updateAdminProfileAction(input: {
+  mutationToken: string;
+  nombre: string;
+  telefono?: string;
+  password?: string;
+}): Promise<AdminActionResult<{ success: true }>> {
   try {
     if (!isDatabaseConfigured()) {
       return { ok: false, error: 'Base de datos no configurada' };
     }
 
-    const adminUserId = await verifyAdminMutationInDb(mutationToken);
+    const token = input.mutationToken?.trim();
+    if (!token) {
+      return { ok: false, error: SESSION_EXPIRED_MSG };
+    }
+
+    const adminUserId = await verifyAdminMutationInDb(token);
     if (!adminUserId) {
       return { ok: false, error: SESSION_EXPIRED_MSG };
     }

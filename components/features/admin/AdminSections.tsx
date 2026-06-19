@@ -477,12 +477,12 @@ export function AdminPsicologosSection({
     patchPsicologoVisibilidad(id, vm, vi);
 
     try {
-      const result = await updatePsicologoVisibilidadAction(
+      const result = await updatePsicologoVisibilidadAction({
         mutationToken,
         id,
-        vm,
-        vi,
-      );
+        visibleMexico: vm,
+        visibleInternacional: vi,
+      });
       if (!result?.ok) {
         if (previous) qc.setQueryData(['admin-psicologos'], previous);
         setVisibilidadError(result?.error ?? 'No se pudo actualizar la visibilidad.');
@@ -1017,13 +1017,19 @@ export function AdminConfigSection({
   const [videoMsg, setVideoMsg] = useState('');
   const [profileMsg, setProfileMsg] = useState('');
   const [saving, setSaving] = useState(false);
+  const [savingVideo, setSavingVideo] = useState(false);
 
   async function guardarPerfil(e: React.FormEvent) {
     e.preventDefault();
+    if (!mutationToken) {
+      setProfileMsg('❌ Sesión expirada. Recarga la página e intenta de nuevo.');
+      return;
+    }
     setSaving(true);
     setProfileMsg('');
     try {
-      const result = await updateAdminProfileAction(mutationToken, {
+      const result = await updateAdminProfileAction({
+        mutationToken,
         nombre,
         telefono,
         password: password || undefined,
@@ -1040,12 +1046,33 @@ export function AdminConfigSection({
     }
   }
 
-  async function guardarVideoConfig() {
+  async function guardarVideoConfig(nextValue?: boolean) {
+    if (!mutationToken) {
+      setVideoMsg('❌ Sesión expirada. Recarga la página e intenta de nuevo.');
+      return;
+    }
+
+    const value = nextValue ?? video15;
+    setSavingVideo(true);
     setVideoMsg('');
-    const result = await saveAdminVideoConfigAction(mutationToken, video15);
-    setVideoMsg(
-      result.ok ? '✅ Configuración guardada' : `❌ ${result.error}`,
-    );
+    try {
+      const result = await saveAdminVideoConfigAction({
+        mutationToken,
+        videoBoton15min: value,
+      });
+      setVideoMsg(
+        result.ok ? '✅ Configuración guardada' : `❌ ${result.error}`,
+      );
+    } catch {
+      setVideoMsg('❌ Error de conexión con el servidor.');
+    } finally {
+      setSavingVideo(false);
+    }
+  }
+
+  async function onVideo15Change(checked: boolean) {
+    setVideo15(checked);
+    await guardarVideoConfig(checked);
   }
 
   return (
@@ -1187,13 +1214,15 @@ export function AdminConfigSection({
               <input
                 type="checkbox"
                 checked={video15}
-                onChange={(e) => setVideo15(e.target.checked)}
+                disabled={savingVideo}
+                onChange={(e) => void onVideo15Change(e.target.checked)}
               />
               <span>Activar botón de video solo 15 minutos antes de la cita</span>
             </label>
             <button
               type="button"
-              onClick={guardarVideoConfig}
+              disabled={savingVideo}
+              onClick={() => void guardarVideoConfig()}
               style={{
                 padding: '8px 16px',
                 background: 'var(--primario-rosa, #ED87AF)',
@@ -1204,7 +1233,7 @@ export function AdminConfigSection({
                 fontSize: '0.9rem',
               }}
             >
-              Guardar
+              {savingVideo ? 'Guardando…' : 'Guardar'}
             </button>
             {videoMsg ? (
               <span style={{ fontSize: '0.85rem', color: '#666' }}>{videoMsg}</span>
