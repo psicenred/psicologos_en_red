@@ -101,7 +101,6 @@ export function SiteHeader({ initialSession }: { initialSession?: SessionState }
             </li>
           ))}
           <li className="nav-lang-item nav-hide-in-pwa">
-            <span className="nav-lang-label">{t('language')}</span>
             <LanguageSwitcher onChange={closeMobileNav} />
           </li>
           <li>

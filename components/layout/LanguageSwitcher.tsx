@@ -1,39 +1,15 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
+import { Check, ChevronDown, Globe } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link, usePathname } from '@/i18n/routing';
 import { cn } from '@/lib/utils';
 import type { Locale } from '@/i18n/routing';
 
-function FlagMexico({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 16" className={className} aria-hidden="true">
-      <rect width="24" height="16" fill="#006847" />
-      <rect x="8" width="8" height="16" fill="#fff" />
-      <rect x="16" width="8" height="16" fill="#ce1126" />
-      <circle cx="12" cy="8" r="2.2" fill="#006847" />
-    </svg>
-  );
-}
-
-function FlagUsa({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 16" className={className} aria-hidden="true">
-      <rect width="24" height="16" fill="#b22234" />
-      <rect y="1.23" width="24" height="1.23" fill="#fff" />
-      <rect y="3.69" width="24" height="1.23" fill="#fff" />
-      <rect y="6.15" width="24" height="1.23" fill="#fff" />
-      <rect y="8.62" width="24" height="1.23" fill="#fff" />
-      <rect y="11.08" width="24" height="1.23" fill="#fff" />
-      <rect y="13.54" width="24" height="1.23" fill="#fff" />
-      <rect width="10" height="8.62" fill="#3c3b6e" />
-    </svg>
-  );
-}
-
-const LOCALES: { code: Locale; label: string; Flag: typeof FlagMexico }[] = [
-  { code: 'es', label: 'Español', Flag: FlagMexico },
-  { code: 'en', label: 'English', Flag: FlagUsa },
+const LOCALES: { code: Locale; label: string }[] = [
+  { code: 'es', label: 'Español' },
+  { code: 'en', label: 'English' },
 ];
 
 export function LanguageSwitcher({
@@ -46,43 +22,91 @@ export function LanguageSwitcher({
   const locale = useLocale() as Locale;
   const pathname = usePathname();
   const t = useTranslations('nav');
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  const currentLabel =
+    LOCALES.find((item) => item.code === locale)?.label ?? 'Español';
+
+  useEffect(() => {
+    if (!open) return;
+
+    const onPointerDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  const close = () => {
+    setOpen(false);
+    onChange?.();
+  };
 
   return (
-    <div
-      className={cn('lang-flag-switcher', className)}
-      role="group"
-      aria-label={t('language')}
-    >
-      {LOCALES.map(({ code, label, Flag }) => {
-        const active = locale === code;
-        if (active) {
-          return (
-            <span
-              key={code}
-              className={cn('lang-flag-btn lang-flag-btn-active')}
-              aria-label={label}
-              aria-current="true"
-              title={label}
-            >
-              <Flag className="lang-flag-icon" />
-            </span>
-          );
-        }
+    <div ref={rootRef} className={cn('lang-switcher', className)}>
+      <button
+        type="button"
+        className="lang-switcher-trigger"
+        aria-label={`${t('language')}: ${currentLabel}`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <Globe className="lang-switcher-globe" aria-hidden="true" />
+        <span className="lang-switcher-current">{currentLabel}</span>
+        <ChevronDown
+          className={cn('lang-switcher-chevron', open && 'lang-switcher-chevron-open')}
+          aria-hidden="true"
+        />
+      </button>
 
-        return (
-          <Link
-            key={code}
-            href={pathname}
-            locale={code}
-            className="lang-flag-btn"
-            aria-label={label}
-            title={label}
-            onClick={onChange}
-          >
-            <Flag className="lang-flag-icon" />
-          </Link>
-        );
-      })}
+      {open ? (
+        <ul
+          className="lang-switcher-menu"
+          role="listbox"
+          aria-label={t('language')}
+        >
+          {LOCALES.map(({ code, label }) => {
+            const active = locale === code;
+            return (
+              <li key={code} role="presentation">
+                {active ? (
+                  <span
+                    className="lang-switcher-option lang-switcher-option-active"
+                    role="option"
+                    aria-selected="true"
+                  >
+                    <Check className="lang-switcher-check" aria-hidden="true" />
+                    {label}
+                  </span>
+                ) : (
+                  <Link
+                    href={pathname}
+                    locale={code}
+                    className="lang-switcher-option"
+                    role="option"
+                    aria-selected="false"
+                    onClick={close}
+                  >
+                    {label}
+                  </Link>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
     </div>
   );
 }
