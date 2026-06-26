@@ -5,8 +5,16 @@ import {
   parseJsonBody,
 } from '@/lib/auth/api';
 import { ensureDb, requestPasswordReset } from '@/lib/auth/service';
+import { enforceRateLimit } from '@/lib/security/rate-limit';
 
 export async function POST(request: Request) {
+  const limited = await enforceRateLimit(request, {
+    bucket: 'auth:password-reset',
+    limit: 5,
+    windowSec: 3600,
+  });
+  if (limited) return limited;
+
   if (!ensureDb()) return databaseUnavailableJson();
 
   try {

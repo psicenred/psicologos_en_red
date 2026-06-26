@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { databaseUnavailableJson, requireAuthUsuario } from '@/lib/auth/api';
-import { hasHadAppointment } from '@/lib/chat/appointments';
+import { canExchangeMessages } from '@/lib/chat/appointments';
 import { enviarCorreoNotificacionChatSiAplica } from '@/lib/chat/notifications';
 import { encryptMensajeContenido } from '@/lib/crypto/messages';
 import { isDatabaseConfigured, query } from '@/lib/db';
+import { isPdfBuffer } from '@/lib/security/file-validation';
 import { STORAGE_BUCKETS, storageUpload } from '@/lib/storage';
 
 export async function POST(request: Request) {
@@ -56,20 +57,26 @@ export async function POST(request: Request) {
 
     const remitenteId = auth.id;
 
-    if (auth.rol === 'psicologo') {
-      const hasAppointment = await hasHadAppointment(
-        remitenteId,
-        destinatarioId,
+    const allowed = await canExchangeMessages(
+      remitenteId,
+      auth.rol,
+      destinatarioId,
+    );
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'No tienes permiso para enviar a este contacto.' },
+        { status: 403 },
       );
-      if (!hasAppointment) {
-        return NextResponse.json(
-          { error: 'No tienes permiso para enviar a este contacto.' },
-          { status: 403 },
-        );
-      }
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    if (!isPdfBuffer(buffer)) {
+      return NextResponse.json(
+        { error: 'El archivo no es un PDF válido.' },
+        { status: 400 },
+      );
+    }
+
     const nombreGuardado = Date.now() + '-' + nombreOriginal;
     const objectKey = `${remitenteId}/${nombreGuardado}`;
     const uploaded = await storageUpload(

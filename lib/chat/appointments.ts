@@ -1,3 +1,4 @@
+import { normalizeRol } from '@/lib/auth/api';
 import { query } from '@/lib/db';
 import { getPsicologoIdFromUsuarioId } from '@/lib/psicologo/id';
 
@@ -16,4 +17,24 @@ export async function hasHadAppointment(
   } catch {
     return false;
   }
+}
+
+/** Valida que dos usuarios puedan intercambiar mensajes (relación terapéutica previa). */
+export async function canExchangeMessages(
+  senderId: number,
+  senderRol: string,
+  destinatarioId: number,
+): Promise<boolean> {
+  const rol = normalizeRol(senderRol);
+
+  if (rol === 'admin') return true;
+
+  if (rol === 'psicologo') {
+    return hasHadAppointment(senderId, destinatarioId);
+  }
+
+  const destinatarioEsPsicologo = await getPsicologoIdFromUsuarioId(destinatarioId);
+  if (!destinatarioEsPsicologo) return false;
+
+  return hasHadAppointment(destinatarioId, senderId);
 }

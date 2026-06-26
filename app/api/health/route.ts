@@ -4,6 +4,14 @@ import { getBaseUrl, getBaseUrlSource } from '@/lib/config';
 import { isBaileysWorkerConfigured } from '@/lib/whatsapp/providers/baileys-api';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
+function isDetailedHealthAuthorized(request: Request): boolean {
+  const secret =
+    process.env.HEALTH_SECRET?.trim() || process.env.CRON_SECRET?.trim();
+  if (!secret) return false;
+  const header = request.headers.get('x-health-secret');
+  return header === secret;
+}
+
 function parseDatabaseUrlInfo(): {
   user: string;
   host: string;
@@ -27,11 +35,11 @@ function parseDatabaseUrlInfo(): {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const detailed = isDetailedHealthAuthorized(request);
   const sessionSecret = Boolean(process.env.SESSION_SECRET?.trim());
   let databaseQuery = false;
   let psicologosCount: number | null = null;
-  let databaseError: string | null = null;
 
   if (isDatabaseConfigured()) {
     try {
@@ -40,14 +48,24 @@ export async function GET() {
       );
       psicologosCount = result.rows[0]?.n ?? 0;
       databaseQuery = true;
-    } catch (error) {
-      const err = error as { message?: string; code?: string };
-      databaseError = [err.code, err.message].filter(Boolean).join(': ');
+    } catch {
+      databaseQuery = false;
     }
   }
 
-  const dbInfo = parseDatabaseUrlInfo();
   const ok = databaseQuery && sessionSecret;
+
+  if (!detailed) {
+    return NextResponse.json(
+      {
+        status: ok ? 'ok' : 'degraded',
+        timestamp: new Date().toISOString(),
+      },
+      { status: ok ? 200 : 503 },
+    );
+  }
+
+  const dbInfo = parseDatabaseUrlInfo();
   const body = {
     status: ok ? 'ok' : 'degraded',
     checks: {
@@ -57,8 +75,11 @@ export async function GET() {
       databasePort: dbInfo?.port ?? null,
       databaseQuery,
       psicologosCount,
-      databaseError,
       sessionSecret,
+      mensajesEncryption: Boolean(
+        process.env.MENSAJES_ENCRYPTION_KEY?.trim() &&
+          process.env.MENSAJES_ENCRYPTION_KEY.trim().length >= 32,
+      ),
       supabaseStorage: isSupabaseConfigured(),
       stripe: Boolean(process.env.STRIPE_SECRET_KEY?.trim()),
       cron: Boolean(process.env.CRON_SECRET?.trim()),

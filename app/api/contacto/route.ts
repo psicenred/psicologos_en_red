@@ -3,8 +3,16 @@ import { databaseUnavailableJson, parseJsonBody } from '@/lib/auth/api';
 import { isDatabaseConfigured } from '@/lib/db';
 import { sendMail } from '@/lib/email';
 import { escapeHtml, escapeHtmlBr } from '@/lib/public/forms';
+import { enforceRateLimit } from '@/lib/security/rate-limit';
 
 export async function POST(request: Request) {
+  const limited = await enforceRateLimit(request, {
+    bucket: 'public:contacto',
+    limit: 5,
+    windowSec: 3600,
+  });
+  if (limited) return limited;
+
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
 
   const body = await parseJsonBody<{

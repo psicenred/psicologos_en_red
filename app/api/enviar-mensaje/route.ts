@@ -4,7 +4,7 @@ import {
   parseJsonBody,
   requireAuthUsuario,
 } from '@/lib/auth/api';
-import { hasHadAppointment } from '@/lib/chat/appointments';
+import { canExchangeMessages } from '@/lib/chat/appointments';
 import { enviarCorreoNotificacionChatSiAplica } from '@/lib/chat/notifications';
 import { encryptMensajeContenido } from '@/lib/crypto/messages';
 import { isDatabaseConfigured, query } from '@/lib/db';
@@ -29,17 +29,15 @@ export async function POST(request: Request) {
   }
 
   try {
-    if (auth.rol === 'psicologo') {
-      const hasAppointment = await hasHadAppointment(remitenteId, destinatarioId);
-      if (!hasAppointment) {
-        return NextResponse.json(
-          {
-            error:
-              'No puedes enviar mensajes a este paciente sin una cita previa.',
-          },
-          { status: 403 },
-        );
-      }
+    const allowed = await canExchangeMessages(remitenteId, auth.rol, destinatarioId);
+    if (!allowed) {
+      return NextResponse.json(
+        {
+          error:
+            'No puedes enviar mensajes a este contacto sin una cita previa.',
+        },
+        { status: 403 },
+      );
     }
 
     await query(

@@ -72,7 +72,8 @@ export async function createDailyMeeting(params: {
       /[^A-Za-z0-9_-]/g,
       '',
     ) || 'sesion-' + Math.floor(Date.now() / 1000);
-  const isOwner = params.rol === 'psicologo';
+  const rolNorm = params.rol === 'psicologo' ? 'psicologo' : 'paciente';
+  const isOwner = rolNorm === 'psicologo';
   const name = (params.displayName || params.userName || 'Usuario')
     .trim()
     .slice(0, 100);

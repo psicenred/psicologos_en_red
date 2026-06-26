@@ -38,7 +38,7 @@ export function useDailyCall() {
           const res = await fetch('/api/daily-meeting', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ citaId, rol, displayName }),
+            body: JSON.stringify({ citaId, displayName }),
           });
           const data = (await res.json()) as {
             url?: string;
@@ -50,9 +50,11 @@ export function useDailyCall() {
             return false;
           }
           setRoom({ url: data.url, token: data.token || '', citaId });
-          fetch(`/api/citas/${citaId}/registrar-entrada`, { method: 'POST' }).catch(
-            () => undefined,
-          );
+          fetch(`/api/citas/${citaId}/registrar-entrada`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rol }),
+          }).catch(() => undefined);
           return true;
         } catch {
           setError('Error de conexión al iniciar video');

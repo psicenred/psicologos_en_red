@@ -14,8 +14,9 @@ export function ensureDb(): boolean {
 }
 
 export async function registerUsuario(body: Record<string, string>) {
-  const { nombre, password, rol, acepto_terminos, acepto_publicidad, telefono } = body;
+  const { nombre, password, acepto_terminos, acepto_publicidad, telefono } = body;
   const email = normalizeEmail(body.email);
+  const rolRegistro = 'paciente';
 
   const existente = await query('SELECT id FROM usuarios WHERE LOWER(email) = $1', [email]);
   if (existente.rows.length > 0) {
@@ -43,7 +44,7 @@ export async function registerUsuario(body: Record<string, string>) {
       email,
       telefonoNorm,
       hashedPassword,
-      rol || 'paciente',
+      rolRegistro,
       aceptoTerminos,
       aceptoPublicidad,
       false,

@@ -3,6 +3,11 @@ import { NextResponse } from 'next/server';
 import mammoth from 'mammoth';
 import { databaseUnavailableJson, requirePsicologoId } from '@/lib/auth/api';
 import { isDatabaseConfigured, query } from '@/lib/db';
+import {
+  isDocxBuffer,
+  isOleDocBuffer,
+  isPdfBuffer,
+} from '@/lib/security/file-validation';
 import { STORAGE_BUCKETS, storageUpload } from '@/lib/storage';
 
 export async function POST(request: Request) {
@@ -40,6 +45,25 @@ export async function POST(request: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    if (ext === '.pdf' && !isPdfBuffer(buffer)) {
+      return NextResponse.json(
+        { error: 'El archivo no es un PDF válido' },
+        { status: 400 },
+      );
+    }
+    if (ext === '.docx' && !isDocxBuffer(buffer)) {
+      return NextResponse.json(
+        { error: 'El archivo no es un DOCX válido' },
+        { status: 400 },
+      );
+    }
+    if (ext === '.doc' && !isOleDocBuffer(buffer)) {
+      return NextResponse.json(
+        { error: 'El archivo no es un DOC válido' },
+        { status: 400 },
+      );
+    }
+
     const tipo = ext === '.pdf' ? 'pdf' : 'word';
     const nombreGuardado = Date.now() + '-' + nombreOriginal;
     const objectKey = `${auth.psicologoId}/${nombreGuardado}`;

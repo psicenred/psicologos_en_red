@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requireAuthUsuario } from '@/lib/auth/api';
+import { normalizeRol, requireAuthUsuario } from '@/lib/auth/api';
 import { createJaasJwt, getJaasAppId, limpiaEnv } from '@/lib/jaas';
 
 export const runtime = 'nodejs';
@@ -28,9 +28,9 @@ export async function GET(request: Request) {
     auth.nombre ||
     'Usuario'
   ).trim();
-  const moderator =
-    searchParams.get('moderator') === 'true' ||
-    searchParams.get('moderator') === '1';
+
+  const rol = normalizeRol(auth.rol);
+  const moderator = rol === 'psicologo' || rol === 'admin';
 
   try {
     const token = createJaasJwt({

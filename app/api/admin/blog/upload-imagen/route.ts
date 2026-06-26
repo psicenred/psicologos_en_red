@@ -2,6 +2,7 @@ import path from 'path';
 import { NextResponse } from 'next/server';
 import { databaseUnavailableJson, requireAdmin } from '@/lib/auth/api';
 import { isDatabaseConfigured } from '@/lib/db';
+import { isImageBuffer } from '@/lib/security/file-validation';
 import { STORAGE_BUCKETS, storageUpload } from '@/lib/storage';
 
 export async function POST(request: Request) {
@@ -35,6 +36,13 @@ export async function POST(request: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    if (!isImageBuffer(buffer, mime)) {
+      return NextResponse.json(
+        { error: 'El contenido del archivo no coincide con una imagen válida' },
+        { status: 400 },
+      );
+    }
+
     const safeOriginal = String(file.name || 'imagen').replace(
       /[^a-zA-Z0-9._-]/g,
       '_',

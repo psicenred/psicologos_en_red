@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { sanitizeBlogHtml } from '@/lib/blog/sanitize-html';
 import {
   crearSlug,
   normalizarPalabrasClave,
@@ -77,7 +78,7 @@ export async function PUT(
     const metaTitle = String(body.meta_title || '').trim() || null;
     const metaDescription =
       String(body.meta_description || '').trim() || null;
-    const contenidoHtml = String(body.contenido_html || '').trim();
+    const contenidoHtml = sanitizeBlogHtml(String(body.contenido_html || '').trim());
     const extractoEntrada = String(body.extracto || '').trim();
     const portadaUrl = String(body.portada_url || '').trim() || null;
     const publicado =

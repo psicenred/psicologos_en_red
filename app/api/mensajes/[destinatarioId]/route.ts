@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { databaseUnavailableJson, normalizeRol, requireAuthUsuario } from '@/lib/auth/api';
-import { hasHadAppointment } from '@/lib/chat/appointments';
+import { databaseUnavailableJson, requireAuthUsuario } from '@/lib/auth/api';
+import { canExchangeMessages } from '@/lib/chat/appointments';
 import { decryptMensajeContenido } from '@/lib/crypto/messages';
 import { isDatabaseConfigured, query } from '@/lib/db';
 
@@ -21,14 +21,13 @@ export async function GET(
   }
 
   try {
-    if (normalizeRol(auth.rol) === 'psicologo') {
-      const hasAppointment = await hasHadAppointment(miId, parseInt(suId, 10));
-      if (!hasAppointment) {
-        return NextResponse.json(
-          { error: 'No tienes permiso para ver este historial de mensajes.' },
-          { status: 403 },
-        );
-      }
+    const destinatarioNum = parseInt(suId, 10);
+    const allowed = await canExchangeMessages(miId, auth.rol, destinatarioNum);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'No tienes permiso para ver este historial de mensajes.' },
+        { status: 403 },
+      );
     }
 
     const result = await query(

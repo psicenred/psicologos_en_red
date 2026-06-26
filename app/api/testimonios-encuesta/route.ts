@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { databaseUnavailableJson } from '@/lib/auth/api';
 import { isDatabaseConfigured, query } from '@/lib/db';
+import { anonymizeDisplayName } from '@/lib/security/anonymize';
 
 export async function GET() {
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
@@ -14,7 +15,18 @@ export async function GET() {
       ORDER BY e.fecha DESC
       LIMIT 100
     `);
-    return NextResponse.json(result.rows);
+
+    const rows = result.rows.map((row) => {
+      const r = row as { comentario: string; valoracion: number; rol: string; nombre: string };
+      return {
+        comentario: r.comentario,
+        valoracion: r.valoracion,
+        rol: r.rol,
+        nombre: anonymizeDisplayName(r.nombre),
+      };
+    });
+
+    return NextResponse.json(rows);
   } catch (error) {
     console.error('GET /api/testimonios-encuesta:', error);
     return NextResponse.json([]);

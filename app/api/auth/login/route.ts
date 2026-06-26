@@ -7,8 +7,17 @@ import {
 } from '@/lib/auth/api';
 import { ensureDb, loginWithCredentials } from '@/lib/auth/service';
 import { destroySessionOnResponse, saveSessionOnResponse } from '@/lib/session';
+import { enforceRateLimit } from '@/lib/security/rate-limit';
+import { logSecurityEvent } from '@/lib/security/logger';
 
 export async function POST(request: Request) {
+  const limited = await enforceRateLimit(request, {
+    bucket: 'auth:login',
+    limit: 10,
+    windowSec: 900,
+  });
+  if (limited) return limited;
+
   if (!ensureDb()) return databaseUnavailableJson();
 
   try {
@@ -29,6 +38,10 @@ export async function POST(request: Request) {
     const result = await loginWithCredentials(email, password);
 
     if (!result.ok) {
+      logSecurityEvent('auth_failure', 'Login fallido', {
+        email,
+        code: result.code,
+      });
       const status = result.code === 'unverified' ? 403 : 401;
       return NextResponse.json(
         { error: result.code, email: result.email },
