@@ -1,13 +1,31 @@
 import { getBaseUrl } from '@/lib/config';
 import { sendMail } from '@/lib/email';
 import { enviarWhatsapp } from '@/lib/whatsapp';
+import {
+  htmlCitaAgendadaPaciente,
+  htmlCitaAgendadaPsicologo,
+  htmlCitaCanceladaPaciente,
+  htmlCitaCanceladaPsicologo,
+  htmlCitaReagendadaPaciente,
+  htmlCitaReagendadaPsicologo,
+  htmlRecordatorioPaciente,
+  htmlRecordatorioPsicologo,
+} from '@/lib/citas/email-templates';
 import { generarIcsCita } from '@/lib/citas/ics';
-import { obtenerContextoCitaNotificacion } from '@/lib/citas/participants';
+import {
+  obtenerContextoCitaNotificacion,
+  type ContextoCitaNotificacion,
+} from '@/lib/citas/participants';
+import type { CitaFormateada } from '@/lib/citas/timezone';
 
 const BCC = 'contacto@psicologosenred.com';
 
+function detalle(formatted: CitaFormateada) {
+  return { fechaStr: formatted.fecha, horaStr: formatted.hora };
+}
+
 function adjuntoIcs(
-  ctx: NonNullable<Awaited<ReturnType<typeof obtenerContextoCitaNotificacion>>>,
+  ctx: ContextoCitaNotificacion,
   opts: {
     citaId?: number | null;
     titulo: string;
@@ -58,42 +76,32 @@ export async function enviarCorreosCitaAgendada(
     return;
   }
 
-  const baseUrl = getBaseUrl();
-  const enlaceLogin = baseUrl + '/login';
-  const { paraPaciente: p, paraPsicologo: psi } = ctx;
+  const enlaceLogin = getBaseUrl() + '/login';
+  const primerNombre = (ctx.paciente.nombre || '').split(' ')[0] || 'Paciente';
+  const psicologoNombre = ctx.psicologo.nombre || 'Tu psicólogo';
+  const pacienteNombre = ctx.paciente.nombre || 'Paciente';
 
   const ics = adjuntoIcs(ctx, {
     citaId,
-    titulo: `Sesión con ${ctx.psicologo.nombre || 'Psicólogos en Red'}`,
-    descripcion: `Cita agendada. Paciente: ${ctx.paciente.nombre || 'Paciente'}.`,
+    titulo: `Sesión con ${psicologoNombre}`,
+    descripcion: `Cita agendada. Paciente: ${pacienteNombre}. Añade este evento a tu calendario (Zoho, Google, etc.).`,
     accion: 'crear',
   });
 
-  const htmlPaciente = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <h1 style="color: #c9a0dc; text-align: center;">Psicólogos en Red</h1>
-      <h2>¡Hola ${(ctx.paciente.nombre || '').split(' ')[0]}!</h2>
-      <p>Tu cita está confirmada:</p>
-      <p><strong>Fecha:</strong> ${p.fecha} · <strong>Hora:</strong> ${p.hora} hrs</p>
-      <p><strong>Especialista:</strong> ${ctx.psicologo.nombre || 'Tu psicólogo'}</p>
-      <p><a href="${enlaceLogin}">Iniciar sesión</a></p>
-    </div>`;
-
-  const htmlPsicologo = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <h1 style="color: #c9a0dc; text-align: center;">Psicólogos en Red</h1>
-      <h2>Nueva cita agendada</h2>
-      <p><strong>Fecha:</strong> ${psi.fecha} · <strong>Hora:</strong> ${psi.hora} hrs</p>
-      <p><strong>Paciente:</strong> ${ctx.paciente.nombre || 'Paciente'}</p>
-      <p><a href="${enlaceLogin}">Iniciar sesión</a></p>
-    </div>`;
+  const detPaciente = detalle(ctx.paraPaciente);
+  const detPsicologo = detalle(ctx.paraPsicologo);
 
   try {
     await sendMail({
       to: ctx.paciente.email,
       bcc: BCC,
       subject: '✅ Cita agendada - Psicólogos en Red',
-      html: htmlPaciente,
+      html: htmlCitaAgendadaPaciente({
+        primerNombre,
+        detalle: detPaciente,
+        psicologoNombre,
+        enlaceLogin,
+      }),
       attachments: [ics],
     });
   } catch (e) {
@@ -104,7 +112,11 @@ export async function enviarCorreosCitaAgendada(
       to: ctx.psicologo.email,
       bcc: BCC,
       subject: '📅 Nueva cita agendada - Psicólogos en Red',
-      html: htmlPsicologo,
+      html: htmlCitaAgendadaPsicologo({
+        detalle: detPsicologo,
+        pacienteNombre,
+        enlaceLogin,
+      }),
       attachments: [ics],
     });
   } catch (e) {
@@ -113,11 +125,11 @@ export async function enviarCorreosCitaAgendada(
 
   await enviarWhatsapp(
     ctx.paciente.telefono,
-    `Psicólogos en Red – Cita agendada: ${p.linea} con ${ctx.psicologo.nombre || 'tu psicólogo'}. ${enlaceLogin}`,
+    `Psicólogos en Red – Cita agendada: ${detPaciente.fechaStr} a las ${detPaciente.horaStr} hrs con ${psicologoNombre}. Iniciar sesión: ${enlaceLogin}`,
   );
   await enviarWhatsapp(
     ctx.psicologo.telefono,
-    `Psicólogos en Red – Nueva cita: ${psi.linea} con ${ctx.paciente.nombre || 'Paciente'}. ${enlaceLogin}`,
+    `Psicólogos en Red – Nueva cita: ${detPsicologo.fechaStr} ${detPsicologo.horaStr} hrs con ${pacienteNombre}. Iniciar sesión: ${enlaceLogin}`,
   );
 }
 
@@ -139,35 +151,29 @@ export async function enviarCorreosCitaReagendada(
   });
   if (!ctx?.paciente.email || !ctx.psicologo.email) return;
 
-  const baseUrl = getBaseUrl();
-  const enlaceLogin = baseUrl + '/login';
-  const { paraPaciente: p, paraPsicologo: psi } = ctx;
+  const enlaceLogin = getBaseUrl() + '/login';
+  const psicologoNombre = ctx.psicologo.nombre || 'Tu psicólogo';
+  const pacienteNombre = ctx.paciente.nombre || 'Paciente';
+  const detPaciente = detalle(ctx.paraPaciente);
+  const detPsicologo = detalle(ctx.paraPsicologo);
 
   const ics = adjuntoIcs(ctx, {
     citaId,
-    titulo: `Sesión reagendada con ${ctx.psicologo.nombre || 'Psicólogos en Red'}`,
+    titulo: `Sesión reagendada con ${psicologoNombre}`,
+    descripcion: `Cita reagendada. Paciente: ${pacienteNombre}. Añade o actualiza este evento en tu calendario.`,
     accion: 'crear',
   });
-
-  const htmlBase = (
-    titulo: string,
-    cuerpo: string,
-    linea: typeof p,
-  ) =>
-    `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-      <h1 style="color: #c9a0dc;">Psicólogos en Red</h1>
-      <h2>${titulo}</h2>
-      <p>${cuerpo}</p>
-      <p><strong>Nueva fecha:</strong> ${linea.fecha} · <strong>Hora:</strong> ${linea.hora} hrs</p>
-      <p><a href="${enlaceLogin}">Iniciar sesión</a></p>
-    </div>`;
 
   try {
     await sendMail({
       to: ctx.paciente.email,
       bcc: BCC,
       subject: '📅 Cita reagendada - Psicólogos en Red',
-      html: htmlBase('Cita reagendada', 'Tu sesión ha sido reagendada correctamente.', p),
+      html: htmlCitaReagendadaPaciente({
+        detalle: detPaciente,
+        psicologoNombre,
+        enlaceLogin,
+      }),
       attachments: [ics],
     });
   } catch (e) {
@@ -178,11 +184,11 @@ export async function enviarCorreosCitaReagendada(
       to: ctx.psicologo.email,
       bcc: BCC,
       subject: '📅 Cita reagendada - Psicólogos en Red',
-      html: htmlBase(
-        'Cita reagendada',
-        `El paciente ${ctx.paciente.nombre || 'Paciente'} ha reagendado la sesión.`,
-        psi,
-      ),
+      html: htmlCitaReagendadaPsicologo({
+        detalle: detPsicologo,
+        pacienteNombre,
+        enlaceLogin,
+      }),
       attachments: [ics],
     });
   } catch (e) {
@@ -191,11 +197,11 @@ export async function enviarCorreosCitaReagendada(
 
   await enviarWhatsapp(
     ctx.paciente.telefono,
-    `Psicólogos en Red – Cita reagendada: ${p.linea}. ${enlaceLogin}`,
+    `Psicólogos en Red – Cita reagendada: ${detPaciente.fechaStr} ${detPaciente.horaStr} hrs. Iniciar sesión: ${enlaceLogin}`,
   );
   await enviarWhatsapp(
     ctx.psicologo.telefono,
-    `Psicólogos en Red – Cita reagendada con ${ctx.paciente.nombre || 'Paciente'}: ${psi.linea}. ${enlaceLogin}`,
+    `Psicólogos en Red – Cita reagendada con ${pacienteNombre}: ${detPsicologo.fechaStr} ${detPsicologo.horaStr} hrs. Iniciar sesión: ${enlaceLogin}`,
   );
 }
 
@@ -217,14 +223,16 @@ export async function enviarCorreosCitaCancelada(
   });
   if (!ctx?.paciente.email || !ctx.psicologo.email) return;
 
-  const baseUrl = getBaseUrl();
-  const enlaceLogin = baseUrl + '/login';
-  const enlaceCatalogo = baseUrl + '/catalogo';
-  const { paraPaciente: p, paraPsicologo: psi } = ctx;
+  const enlaceLogin = getBaseUrl() + '/login';
+  const enlaceCatalogo = getBaseUrl() + '/catalogo';
+  const psicologoNombre = ctx.psicologo.nombre || 'tu especialista';
+  const pacienteNombre = ctx.paciente.nombre || 'Paciente';
+  const detPaciente = detalle(ctx.paraPaciente);
+  const detPsicologo = detalle(ctx.paraPsicologo);
 
   const ics = adjuntoIcs(ctx, {
     citaId,
-    titulo: 'Sesión cancelada',
+    titulo: 'Sesión cancelada - Psicólogos en Red',
     accion: 'cancelar',
   });
 
@@ -233,7 +241,11 @@ export async function enviarCorreosCitaCancelada(
       to: ctx.psicologo.email,
       bcc: BCC,
       subject: '❌ Cita cancelada - Psicólogos en Red',
-      html: `<p>Cita cancelada con ${ctx.paciente.nombre || 'Paciente'}: ${psi.linea}.</p><p><a href="${enlaceLogin}">Iniciar sesión</a></p>`,
+      html: htmlCitaCanceladaPsicologo({
+        detalle: detPsicologo,
+        pacienteNombre,
+        enlaceLogin,
+      }),
       attachments: [ics],
     });
   } catch (e) {
@@ -244,7 +256,11 @@ export async function enviarCorreosCitaCancelada(
       to: ctx.paciente.email,
       bcc: BCC,
       subject: 'Cita cancelada - Psicólogos en Red',
-      html: `<p>Tu cita del ${p.linea} fue cancelada. Reembolso en 5-10 días hábiles.</p><p><a href="${enlaceCatalogo}">Agendar nueva cita</a></p>`,
+      html: htmlCitaCanceladaPaciente({
+        detalle: detPaciente,
+        psicologoNombre,
+        enlaceCatalogo,
+      }),
       attachments: [ics],
     });
   } catch (e) {
@@ -253,11 +269,11 @@ export async function enviarCorreosCitaCancelada(
 
   await enviarWhatsapp(
     ctx.psicologo.telefono,
-    `Psicólogos en Red – Cita cancelada: ${psi.linea}. ${enlaceLogin}`,
+    `Psicólogos en Red – Cita cancelada: ${detPsicologo.fechaStr} ${detPsicologo.horaStr} hrs con ${pacienteNombre}. Iniciar sesión: ${enlaceLogin}`,
   );
   await enviarWhatsapp(
     ctx.paciente.telefono,
-    `Psicólogos en Red – Tu cita del ${p.linea} fue cancelada. ${enlaceCatalogo}`,
+    `Psicólogos en Red – Tu cita del ${detPaciente.fechaStr} fue cancelada. Puedes agendar otra: ${enlaceCatalogo}`,
   );
 }
 
@@ -278,17 +294,23 @@ export async function enviarCorreosRecordatorioCita(
   if (!ctx?.paciente.email || !ctx.psicologo.email) return;
 
   const enlaceLogin = getBaseUrl() + '/login';
-  const { paraPaciente: p, paraPsicologo: psi } = ctx;
-
-  const htmlPaciente = `<p>Recordatorio: tu sesión con ${ctx.psicologo.nombre || 'tu psicólogo'} es en 30 min (${p.linea}).</p><p><a href="${enlaceLogin}">Iniciar sesión</a></p>`;
-  const htmlPsicologo = `<p>Recordatorio: sesión en 30 min con ${ctx.paciente.nombre || 'Paciente'} (${psi.linea}).</p><p><a href="${enlaceLogin}">Iniciar sesión</a></p>`;
+  const primerNombre = (ctx.paciente.nombre || '').split(' ')[0] || 'Paciente';
+  const psicologoNombre = ctx.psicologo.nombre || 'tu psicólogo';
+  const pacienteNombre = ctx.paciente.nombre || 'Paciente';
+  const detPaciente = detalle(ctx.paraPaciente);
+  const detPsicologo = detalle(ctx.paraPsicologo);
 
   try {
     await sendMail({
       to: ctx.paciente.email,
       bcc: BCC,
       subject: '⏰ Recordatorio: tu sesión es en 30 min - Psicólogos en Red',
-      html: htmlPaciente,
+      html: htmlRecordatorioPaciente({
+        primerNombre,
+        psicologoNombre,
+        detalle: detPaciente,
+        enlaceLogin,
+      }),
     });
   } catch (e) {
     console.error('Error correo recordatorio paciente:', (e as Error).message);
@@ -298,7 +320,11 @@ export async function enviarCorreosRecordatorioCita(
       to: ctx.psicologo.email,
       bcc: BCC,
       subject: '⏰ Recordatorio: sesión en 30 min - Psicólogos en Red',
-      html: htmlPsicologo,
+      html: htmlRecordatorioPsicologo({
+        pacienteNombre,
+        detalle: detPsicologo,
+        enlaceLogin,
+      }),
     });
   } catch (e) {
     console.error('Error correo recordatorio psicólogo:', (e as Error).message);
@@ -306,10 +332,10 @@ export async function enviarCorreosRecordatorioCita(
 
   await enviarWhatsapp(
     ctx.paciente.telefono,
-    `Psicólogos en Red – Recordatorio: sesión en 30 min (${p.linea}). ${enlaceLogin}`,
+    `Psicólogos en Red – Recordatorio: tu sesión es en 30 min (${detPaciente.fechaStr} ${detPaciente.horaStr} hrs). Iniciar sesión: ${enlaceLogin}`,
   );
   await enviarWhatsapp(
     ctx.psicologo.telefono,
-    `Psicólogos en Red – Recordatorio: sesión en 30 min (${psi.linea}). ${enlaceLogin}`,
+    `Psicólogos en Red – Recordatorio: sesión en 30 min con ${pacienteNombre} (${detPsicologo.fechaStr} ${detPsicologo.horaStr} hrs). Iniciar sesión: ${enlaceLogin}`,
   );
 }

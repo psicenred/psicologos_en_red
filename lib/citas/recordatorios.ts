@@ -4,6 +4,11 @@ import { sendMail } from '@/lib/email';
 import { enviarWhatsapp } from '@/lib/whatsapp';
 import { ZONA_HORARIA_DEFECTO } from '@/lib/citas/availability';
 import { SQL_CITA_INSTANT_C } from '@/lib/citas/cita-timing';
+import {
+  htmlRecordatorioPostCitaDia15,
+  htmlRecordatorioPostCitaDia30,
+  htmlRecordatorioPostCitaDia60,
+} from '@/lib/citas/email-templates';
 import { enviarCorreosRecordatorioCita } from '@/lib/citas/emails';
 
 export async function ejecutarRecordatoriosCitas(): Promise<{
@@ -116,9 +121,7 @@ export async function ejecutarRecordatoriosPostCita(): Promise<{
   enviados: number;
 }> {
   await asegurarSecuenciaRecordatorioPostCita();
-  const baseUrl = getBaseUrl();
-  const enlaceLogin = baseUrl + '/perfil';
-  const botonHtml = `<p><a href="${enlaceLogin}">Iniciar sesión y agendar</a></p>`;
+  const enlaceLogin = getBaseUrl() + '/perfil';
   let enviados = 0;
 
   try {
@@ -188,11 +191,11 @@ export async function ejecutarRecordatoriosPostCita(): Promise<{
             to: usuario.email!,
             bcc: 'contacto@psicologosenred.com',
             subject: `¿Cómo te has sentido estos últimos días, ${primerNombre}?`,
-            html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h1 style="color: #c9a0dc;">Psicólogos en Red</h1>
-              <p>Hola ${nombre}, han pasado un par de semanas desde tu última sesión.</p>
-              ${botonHtml}
-            </div>`,
+            html: htmlRecordatorioPostCitaDia15({
+              nombre,
+              primerNombre,
+              enlaceLogin,
+            }),
           });
           await enviarWhatsapp(
             usuario.telefono,
@@ -214,11 +217,7 @@ export async function ejecutarRecordatoriosPostCita(): Promise<{
             to: usuario.email!,
             bcc: 'contacto@psicologosenred.com',
             subject: 'Un mes de tu última sesión: Reconecta con tus metas',
-            html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h1 style="color: #c9a0dc;">Psicólogos en Red</h1>
-              <p>Hola ${nombre}, hoy se cumple un mes desde tu última consulta.</p>
-              ${botonHtml}
-            </div>`,
+            html: htmlRecordatorioPostCitaDia30({ nombre, enlaceLogin }),
           });
           await enviarWhatsapp(
             usuario.telefono,
@@ -240,11 +239,11 @@ export async function ejecutarRecordatoriosPostCita(): Promise<{
             to: usuario.email!,
             bcc: 'contacto@psicologosenred.com',
             subject: `${primerNombre}, queremos apoyarte a retomar tu bienestar`,
-            html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h1 style="color: #c9a0dc;">Psicólogos en Red</h1>
-              <p>Hola ${nombre}, han pasado 60 días desde tu última consulta.</p>
-              ${botonHtml}
-            </div>`,
+            html: htmlRecordatorioPostCitaDia60({
+              nombre,
+              primerNombre,
+              enlaceLogin,
+            }),
           });
           await enviarWhatsapp(
             usuario.telefono,
