@@ -1,4 +1,4 @@
-import { ZONA_HORARIA_DEFECTO } from '@/lib/citas/availability';
+import { ZONA_HORARIA_DEFECTO } from '@/lib/citas/constants';
 import { parseCitaInicio } from '@/lib/citas/cita-timing';
 
 export { ZONA_HORARIA_DEFECTO };

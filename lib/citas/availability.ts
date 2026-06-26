@@ -1,6 +1,7 @@
 import { query } from '@/lib/db';
+import { ZONA_HORARIA_DEFECTO } from '@/lib/citas/constants';
 
-export const ZONA_HORARIA_DEFECTO = 'America/Mexico_City';
+export { ZONA_HORARIA_DEFECTO };
 
 export async function getDisponibilidadCalendario(psicologoId: number) {
   const horarioResult = await query(
