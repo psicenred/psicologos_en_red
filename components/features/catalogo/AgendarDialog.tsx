@@ -6,11 +6,11 @@ import { format } from 'date-fns';
 import { getZonaNavegador } from '@/lib/timezone-client';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/routing';
-import { Button } from '@/components/ui/button';
-import { DateTimePicker } from '@/components/features/citas/DateTimePicker';
+import { PerfilGestionCitaFields } from '@/components/features/perfil/PerfilGestionCitaFields';
 import { minSessionPrice } from '@/lib/catalog-pricing';
 import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import type { Psicologo } from '@/components/features/catalogo/CatalogoClient';
+import '@/components/features/perfil/perfil-legacy.css';
 
 type RegionState = {
   currency: string;
@@ -77,11 +77,11 @@ export function AgendarDialog({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCloseRef.current();
+      if (e.key === 'Escape' && !loading) onCloseRef.current();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
+  }, [open, loading]);
 
   async function confirmar() {
     if (!psicologo || !fecha || !hora) return;
@@ -123,59 +123,52 @@ export function AgendarDialog({
 
   return createPortal(
     <div
-      className="catalogo-agendar-overlay"
-      style={{
-        display: 'flex',
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.5)',
-        zIndex: 10001,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-      }}
+      className="perfil-modal-overlay catalogo-agendar-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="gestion-cita-titulo"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onCloseRef.current();
+        if (e.target === e.currentTarget && !loading) onCloseRef.current();
       }}
     >
       <div
-        role="dialog"
-        aria-modal="true"
-        className="grid w-full max-w-lg gap-4 rounded-lg border bg-background p-6 shadow-lg"
+        className="perfil-modal perfil-modal-gestion-cita"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-4">
-          <h2 className="text-lg font-semibold leading-none tracking-tight">
-            {psicologo ? t('bookWith', { name: psicologo.nombre }) : t('book')}
-          </h2>
-          <button
-            type="button"
-            onClick={() => onCloseRef.current()}
-            className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100"
-            aria-label={t('closeProfile')}
-          >
-            ×
-          </button>
-        </div>
+        <h3 id="gestion-cita-titulo">
+          {psicologo ? t('bookWith', { name: psicologo.nombre }) : t('book')}
+        </h3>
 
         {loggedIn === false ? (
-          <div className="space-y-3 text-sm">
+          <div className="gestion-cita-login">
             <p>{t('loginRequired')}</p>
-            <div className="flex gap-2">
-              <Button asChild>
-                <Link href={`/login?redirect=${encodeURIComponent('/catalogo')}`}>
-                  {t('login')}
-                </Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/registro">{t('register')}</Link>
-              </Button>
+            <div className="perfil-modal-actions">
+              <Link
+                href={`/login?redirect=${encodeURIComponent('/catalogo')}`}
+                className="btn-primary"
+                style={{ textAlign: 'center', textDecoration: 'none' }}
+              >
+                {t('login')}
+              </Link>
+              <Link
+                href="/registro"
+                className="btn-primary"
+                style={{
+                  textAlign: 'center',
+                  textDecoration: 'none',
+                  background: '#fff',
+                  color: 'var(--primario-rosa)',
+                  border: '1px solid var(--primario-rosa)',
+                }}
+              >
+                {t('register')}
+              </Link>
             </div>
           </div>
         ) : psicologo ? (
-          <div className="space-y-4">
+          <>
             {precio ? (
-              <p className="text-sm text-muted-foreground">
+              <p className="perfil-modal-subtitulo">
                 {t('sessionPrice')}:{' '}
                 <strong>
                   {precio.currency === 'USD' ? 'US$' : '$'}
@@ -183,22 +176,35 @@ export function AgendarDialog({
                 </strong>
               </p>
             ) : null}
-            <DateTimePicker
+
+            <PerfilGestionCitaFields
               psicologoId={psicologo.id}
               fecha={fecha}
               setFecha={setFecha}
               hora={hora}
               setHora={setHora}
             />
-            {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            <Button
-              className="w-full"
-              disabled={!fecha || !hora || loading || loggedIn === null}
-              onClick={confirmar}
-            >
-              {loading ? t('redirectingPay') : t('continuePay')}
-            </Button>
-          </div>
+
+            {error ? <p className="gestion-cita-error">{error}</p> : null}
+
+            <div className="perfil-modal-actions">
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => onCloseRef.current()}
+              >
+                {t('closeProfile')}
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={!fecha || !hora || loading || loggedIn === null}
+                onClick={confirmar}
+              >
+                {loading ? t('redirectingPay') : t('continuePay')}
+              </button>
+            </div>
+          </>
         ) : null}
       </div>
     </div>,

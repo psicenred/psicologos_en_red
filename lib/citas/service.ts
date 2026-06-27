@@ -11,6 +11,12 @@ import {
 } from '@/lib/citas/emails';
 import { calcularMontoStripe } from '@/lib/citas/pricing';
 import { guardarZonaHorariaPaciente } from '@/lib/usuarios/zona-horaria';
+import {
+  applyReferidorDiscountAmount,
+  consumeReferidorDiscount,
+  getReferidorDiscountForPayment,
+  procesarPrimeraCitaReferido,
+} from '@/lib/referral/service';
 import type Stripe from 'stripe';
 
 function linkSesion(pacienteId: number, psicologoId: number): string {
@@ -197,6 +203,8 @@ export async function agendarCita(params: {
 
   const insertResult = await query(sqlWithMotivo, sqlParams);
   const inserted = rowInsertCita(insertResult.rows[0]);
+
+  await procesarPrimeraCitaReferido(params.pacienteId);
 
   try {
     await enviarCorreosCitaAgendada(
@@ -520,13 +528,29 @@ export async function crearSesionPago(
     : 0;
   const motivoMeta = params.motivoDeConsulta?.trim().slice(0, 200) || '';
 
+  let unitAmount = pricing.monto;
+  let descuentoReferidorAplicado = false;
+  let montoOriginal = unitAmount;
+  let montoFinal = unitAmount;
+
+  if (testAmountMxn <= 0) {
+    const discount = await getReferidorDiscountForPayment(params.pacienteId);
+    if (discount.apply) {
+      const amounts = applyReferidorDiscountAmount(pricing.monto);
+      montoOriginal = amounts.montoOriginal;
+      montoFinal = amounts.montoFinal;
+      unitAmount = amounts.montoFinal;
+      descuentoReferidorAplicado = true;
+    }
+  }
+
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
     line_items: [
       {
         price_data: {
           currency: pricing.currency,
-          unit_amount: pricing.monto,
+          unit_amount: unitAmount,
           product_data: {
             name:
               testAmountMxn > 0
@@ -535,7 +559,9 @@ export async function crearSesionPago(
             description:
               testAmountMxn > 0
                 ? 'Pago de prueba - quitar STRIPE_TEST_AMOUNT_MXN después'
-                : `1 sesión - ${params.fecha} ${params.hora}`,
+                : descuentoReferidorAplicado
+                  ? `1 sesión (50% descuento referidor) - ${params.fecha} ${params.hora}`
+                  : `1 sesión - ${params.fecha} ${params.hora}`,
           },
         },
         quantity: 1,
@@ -548,6 +574,11 @@ export async function crearSesionPago(
       psicologo_id: String(params.psicologoId),
       fecha: params.fecha,
       hora: params.hora,
+      ...(descuentoReferidorAplicado && {
+        descuento_referidor_aplicado: 'true',
+        monto_original: String(montoOriginal),
+        monto_final: String(montoFinal),
+      }),
       ...(params.servicioInteres && {
         servicio_interes: String(params.servicioInteres),
       }),
@@ -631,6 +662,30 @@ export async function handleStripeCheckoutCompleted(
     origenConocimiento,
     recomendadoPor,
   });
+
+  await procesarPrimeraCitaReferido(pacienteIdNum);
+
+  if (meta.descuento_referidor_aplicado === 'true') {
+    await consumeReferidorDiscount(pacienteIdNum);
+    if (inserted.id) {
+      const montoOriginal = parseInt(String(meta.monto_original || ''), 10);
+      const montoFinal = parseInt(String(meta.monto_final || ''), 10);
+      try {
+        await query(
+          `UPDATE citas SET descuento_referidor_aplicado = true,
+            monto_original = $2, monto_final = $3
+           WHERE id = $1`,
+          [
+            inserted.id,
+            Number.isFinite(montoOriginal) ? montoOriginal : null,
+            Number.isFinite(montoFinal) ? montoFinal : null,
+          ],
+        );
+      } catch {
+        /* columnas opcionales si migración pendiente */
+      }
+    }
+  }
 
   try {
     await enviarCorreosCitaAgendada(

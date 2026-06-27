@@ -1,4 +1,7 @@
-/* Catálogo legacy — portado de estilos.css */
+/* Modal agendar cita — encima del perfil del psicólogo (z-index 10000) */
+.catalogo-agendar-overlay {
+  z-index: 10001;
+}
 /* ========== CATÁLOGO MODERNO (estilo index) ========== */
 .catalogo-hero {
  position: relative;

@@ -13,6 +13,7 @@ import { PhoneCountryInput } from '@/components/features/auth/PhoneCountryInput'
 import { DEFAULT_PHONE_COUNTRY_DIAL } from '@/lib/phone/country-codes';
 import { formatPhoneWithCountryCode } from '@/lib/phone/format';
 import { registroSchema, type RegistroInput } from '@/lib/schemas/auth';
+import { clearStoredReferralCode, getStoredReferralCode } from '@/lib/referral/client';
 
 export function RegistroForm() {
   const t = useTranslations('auth');
@@ -49,6 +50,10 @@ export function RegistroForm() {
     if (data.acepto_publicidad) {
       params.acepto_publicidad = 'on';
     }
+    const refCode = getStoredReferralCode();
+    if (refCode) {
+      params.ref_code = refCode;
+    }
 
     try {
       const res = await fetch('/registrar-usuario', {
@@ -58,6 +63,7 @@ export function RegistroForm() {
         redirect: 'manual',
       });
       if (res.status >= 300 && res.status < 400) {
+        clearStoredReferralCode();
         router.push('/registro-exitoso');
         return;
       }

@@ -7,6 +7,7 @@ import { PrivateChat } from '@/components/features/chat/PrivateChat';
 import { useVideoFullscreen } from '@/lib/hooks/useVideoFullscreen';
 import { ReagendarDialog } from '@/components/features/citas/ReagendarDialog';
 import { PerfilAgendarDialog } from '@/components/features/perfil/PerfilAgendarDialog';
+import { ReferralSharePanel } from '@/components/features/perfil/ReferralSharePanel';
 import {
   type CitaPaciente,
   estadoClass,
@@ -68,6 +69,24 @@ export function PerfilDashboardSection({
           </button>
         </div>
       </div>
+
+      <aside className="referidos-promo" aria-labelledby="referidos-promo-title">
+        <div className="referidos-promo-badge">Programa de referidos</div>
+        <h3 id="referidos-promo-title" className="referidos-promo-title">
+          Cuida a quienes te importan y recibe algo a cambio
+        </h3>
+        <p className="referidos-promo-text">
+          Comparte tu enlace personal. Cuando alguien se registre y agende su
+          primera cita con uno de nuestros especialistas, obtendrás{' '}
+          <strong>50&nbsp;% de descuento</strong> automático en tu próxima sesión.
+        </p>
+        <ol className="referidos-promo-steps">
+          <li>Copia tu enlace o compártelo por WhatsApp.</li>
+          <li>Tu referido agenda su primera cita con un especialista.</li>
+          <li>Tu próximo pago llega con el 50&nbsp;% ya aplicado.</li>
+        </ol>
+        <ReferralSharePanel userName={nombre} />
+      </aside>
     </div>
   );
 }

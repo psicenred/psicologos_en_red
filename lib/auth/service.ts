@@ -8,6 +8,10 @@ import {
   normalizeEmail,
   normalizeRol,
 } from '@/lib/auth/api';
+import {
+  attachReferidoOnRegister,
+  ensureCodigoReferido,
+} from '@/lib/referral/service';
 
 export function ensureDb(): boolean {
   return isDatabaseConfigured();
@@ -17,6 +21,7 @@ export async function registerUsuario(body: Record<string, string>) {
   const { nombre, password, acepto_terminos, acepto_publicidad, telefono } = body;
   const email = normalizeEmail(body.email);
   const rolRegistro = 'paciente';
+  const refCode = body.ref_code || body.ref || '';
 
   const existente = await query('SELECT id FROM usuarios WHERE LOWER(email) = $1', [email]);
   if (existente.rows.length > 0) {
@@ -36,9 +41,10 @@ export async function registerUsuario(body: Record<string, string>) {
   const tokenVerificacion = crypto.randomBytes(32).toString('hex');
   const tokenExpira = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-  await query(
+  const inserted = await query<{ id: number }>(
     `INSERT INTO usuarios (nombre, email, telefono, password, rol, acepto_terminos, acepto_publicidad, email_verificado, token_verificacion, token_verificacion_expira)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     RETURNING id`,
     [
       nombre,
       email,
@@ -52,6 +58,12 @@ export async function registerUsuario(body: Record<string, string>) {
       tokenExpira,
     ],
   );
+
+  const newUserId = inserted.rows[0]?.id;
+  if (newUserId) {
+    await ensureCodigoReferido(newUserId);
+    await attachReferidoOnRegister(newUserId, refCode);
+  }
 
   const enlaceVerificacion = `${getBaseUrl()}/verificar-email?token=${tokenVerificacion}`;
 
