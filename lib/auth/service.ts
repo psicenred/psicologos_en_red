@@ -17,7 +17,61 @@ export function ensureDb(): boolean {
   return isDatabaseConfigured();
 }
 
-export async function registerUsuario(body: Record<string, string>) {
+export type RegisterUsuarioResult =
+  | { redirect: '/registro-exitoso' }
+  | {
+      error: {
+        code:
+          | 'EMAIL_EXISTS'
+          | 'PHONE_TOO_LONG'
+          | 'FIELD_TOO_LONG'
+          | 'SERVER_ERROR';
+        title: string;
+        body: string;
+        status: number;
+      };
+    };
+
+function mapRegisterDbError(err: unknown): RegisterUsuarioResult['error'] | null {
+  const msg = (err as { message?: string }).message || '';
+  if (
+    msg.includes('usuarios_email_key') ||
+    (msg.includes('duplicate key') && msg.includes('email'))
+  ) {
+    return {
+      code: 'EMAIL_EXISTS',
+      title: 'Correo ya registrado',
+      body: 'Este correo ya está registrado.',
+      status: 409,
+    };
+  }
+  if (msg.includes('value too long') && msg.includes('telefono')) {
+    return {
+      code: 'PHONE_TOO_LONG',
+      title: 'Teléfono inválido',
+      body: 'El teléfono es demasiado largo. Usa solo el número local sin repetir el código de país.',
+      status: 400,
+    };
+  }
+  if (msg.includes('value too long')) {
+    return {
+      code: 'FIELD_TOO_LONG',
+      title: 'Datos demasiado largos',
+      body: 'Revisa nombre, correo o teléfono e intenta de nuevo.',
+      status: 400,
+    };
+  }
+  return null;
+}
+
+function normalizeTelefonoRegistro(telefono: string | undefined): string | null {
+  const trimmed = telefono?.trim();
+  return trimmed || null;
+}
+
+export async function registerUsuario(
+  body: Record<string, string>,
+): Promise<RegisterUsuarioResult> {
   const { nombre, password, acepto_terminos, acepto_publicidad, telefono } = body;
   const email = normalizeEmail(body.email);
   const rolRegistro = 'paciente';
@@ -25,44 +79,70 @@ export async function registerUsuario(body: Record<string, string>) {
 
   const existente = await query('SELECT id FROM usuarios WHERE LOWER(email) = $1', [email]);
   if (existente.rows.length > 0) {
-    return authMessageBox({
-      variant: 'error',
-      title: 'Correo ya registrado',
-      body: 'Este correo ya está registrado.',
-      actionHtml: '<a href="/login">Ir al Login</a>',
-    });
+    return {
+      error: {
+        code: 'EMAIL_EXISTS',
+        title: 'Correo ya registrado',
+        body: 'Este correo ya está registrado.',
+        status: 409,
+      },
+    };
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
   const aceptoTerminos = acepto_terminos === 'on' || acepto_terminos === 'true';
   const aceptoPublicidad =
     acepto_publicidad === 'on' || acepto_publicidad === 'true';
-  const telefonoNorm = telefono?.trim() || null;
+  const telefonoNorm = normalizeTelefonoRegistro(telefono);
+  if (telefonoNorm && telefonoNorm.length > 20) {
+    return {
+      error: {
+        code: 'PHONE_TOO_LONG',
+        title: 'Teléfono inválido',
+        body: 'El teléfono es demasiado largo. Usa solo el número local sin repetir el código de país.',
+        status: 400,
+      },
+    };
+  }
+
   const tokenVerificacion = crypto.randomBytes(32).toString('hex');
   const tokenExpira = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-  const inserted = await query<{ id: number }>(
-    `INSERT INTO usuarios (nombre, email, telefono, password, rol, acepto_terminos, acepto_publicidad, email_verificado, token_verificacion, token_verificacion_expira)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-     RETURNING id`,
-    [
-      nombre,
-      email,
-      telefonoNorm,
-      hashedPassword,
-      rolRegistro,
-      aceptoTerminos,
-      aceptoPublicidad,
-      false,
-      tokenVerificacion,
-      tokenExpira,
-    ],
-  );
+  let inserted;
+  try {
+    inserted = await query<{ id: number }>(
+      `INSERT INTO usuarios (nombre, email, telefono, password, rol, acepto_terminos, acepto_publicidad, email_verificado, token_verificacion, token_verificacion_expira)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING id`,
+      [
+        nombre.trim().slice(0, 100),
+        email.slice(0, 100),
+        telefonoNorm,
+        hashedPassword,
+        rolRegistro,
+        aceptoTerminos,
+        aceptoPublicidad,
+        false,
+        tokenVerificacion,
+        tokenExpira,
+      ],
+    );
+  } catch (err) {
+    const mapped = mapRegisterDbError(err);
+    if (mapped) {
+      return { error: mapped };
+    }
+    throw err;
+  }
 
   const newUserId = inserted.rows[0]?.id;
   if (newUserId) {
-    await ensureCodigoReferido(newUserId);
-    await attachReferidoOnRegister(newUserId, refCode);
+    try {
+      await ensureCodigoReferido(newUserId);
+      await attachReferidoOnRegister(newUserId, refCode);
+    } catch (err) {
+      console.error('[referidos] post-registro:', err);
+    }
   }
 
   const enlaceVerificacion = `${getBaseUrl()}/verificar-email?token=${tokenVerificacion}`;

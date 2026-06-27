@@ -58,13 +58,43 @@ export function RegistroForm() {
     try {
       const res = await fetch('/registrar-usuario', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Accept: 'application/json',
+        },
         body: new URLSearchParams(params),
-        redirect: 'manual',
       });
-      if (res.status >= 300 && res.status < 400) {
+      const data = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        redirect?: string;
+        code?: string;
+        error?: string;
+      } | null;
+
+      if (res.ok && data?.ok && data.redirect) {
         clearStoredReferralCode();
-        router.push('/registro-exitoso');
+        router.push(data.redirect);
+        return;
+      }
+
+      if (data?.code === 'EMAIL_EXISTS') {
+        setError(t('emailAlreadyRegistered'));
+        return;
+      }
+      if (data?.code === 'PHONE_TOO_LONG') {
+        setError(t('phoneTooLong'));
+        return;
+      }
+      if (data?.code === 'FIELD_TOO_LONG') {
+        setError(data.error || t('registerError'));
+        return;
+      }
+      if (data?.code === 'DB_UNAVAILABLE') {
+        setError(t('dbUnavailable'));
+        return;
+      }
+      if (data?.error) {
+        setError(data.error);
         return;
       }
       setError(t('registerError'));

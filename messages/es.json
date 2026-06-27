@@ -262,6 +262,8 @@
     "unverified": "Correo no verificado. Revisa tu bandeja (y spam) o reenvía el enlace de verificación.",
     "connectionError": "Error de conexión.",
     "registerError": "No se pudo completar el registro.",
+    "emailAlreadyRegistered": "Este correo ya está registrado. Inicia sesión o usa otro email.",
+    "phoneTooLong": "El teléfono es demasiado largo. Escribe solo tu número local (sin repetir el +52).",
     "forgotPasswordTitle": "Recuperar contraseña",
     "forgotPasswordSubtitle": "Te enviaremos un enlace a tu correo",
     "forgotPasswordHint": "Ingresa el correo con el que te registraste. Si existe en nuestro sistema, recibirás un enlace para crear una nueva contraseña.",

@@ -262,6 +262,8 @@
     "unverified": "Email not verified. Check your inbox (and spam) or resend the verification link.",
     "connectionError": "Connection error.",
     "registerError": "Registration could not be completed.",
+    "emailAlreadyRegistered": "This email is already registered. Sign in or use a different email.",
+    "phoneTooLong": "Phone number is too long. Enter only your local number (without repeating the country code).",
     "forgotPasswordTitle": "Reset password",
     "forgotPasswordSubtitle": "We will email you a reset link",
     "forgotPasswordHint": "Enter the email you used to register. If it exists in our system, you will receive a link to set a new password.",

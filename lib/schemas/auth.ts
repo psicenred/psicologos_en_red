@@ -1,4 +1,11 @@
 import { z } from 'zod';
+import { formatPhoneWithCountryCode } from '@/lib/phone/format';
+import { DEFAULT_PHONE_COUNTRY_DIAL } from '@/lib/phone/country-codes';
+
+/** Límite de columnas en Postgres (`usuarios.telefono`, etc.). */
+export const USUARIO_TELEFONO_MAX = 20;
+export const USUARIO_NOMBRE_MAX = 100;
+export const USUARIO_EMAIL_MAX = 100;
 
 export const loginSchema = z.object({
   email: z.string().email('Correo inválido'),
@@ -7,8 +14,14 @@ export const loginSchema = z.object({
 
 export const registroSchema = z
   .object({
-    nombre: z.string().min(2, 'Nombre demasiado corto'),
-    email: z.string().email('Correo inválido'),
+    nombre: z
+      .string()
+      .min(2, 'Nombre demasiado corto')
+      .max(USUARIO_NOMBRE_MAX, `Máximo ${USUARIO_NOMBRE_MAX} caracteres`),
+    email: z
+      .string()
+      .email('Correo inválido')
+      .max(USUARIO_EMAIL_MAX, 'Correo demasiado largo'),
     password: z.string().min(8, 'Mínimo 8 caracteres'),
     codigo_pais: z.string().min(2, 'Selecciona un código de país'),
     telefono_numero: z.string().optional(),
@@ -25,6 +38,19 @@ export const registroSchema = z
         message: 'Número de teléfono inválido',
         path: ['telefono_numero'],
       });
+    }
+    if (digits.length > 0) {
+      const formatted = formatPhoneWithCountryCode(
+        data.codigo_pais || DEFAULT_PHONE_COUNTRY_DIAL,
+        data.telefono_numero ?? '',
+      );
+      if (formatted.length > USUARIO_TELEFONO_MAX) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Teléfono demasiado largo (máx. ${USUARIO_TELEFONO_MAX} caracteres con código de país)`,
+          path: ['telefono_numero'],
+        });
+      }
     }
   });
 
