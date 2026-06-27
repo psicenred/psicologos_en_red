@@ -100,6 +100,7 @@ function CitaCardDoctor({
 }
 
 export function DoctorDashboardSection({
+  nombre,
   citas,
   video15Min,
   onVideo,
@@ -107,6 +108,7 @@ export function DoctorDashboardSection({
   joiningCitaId = null,
   zonaVisualizacion,
 }: {
+  nombre?: string;
   citas: CitaDoctor[];
   video15Min: boolean;
   onVideo: (cita: CitaDoctor) => void;
@@ -136,7 +138,9 @@ export function DoctorDashboardSection({
   return (
     <div className="seccion-panel">
       <div className="welcome-banner">
-        <h1>Panel del Especialista 👋</h1>
+        <h1>
+          Hola, <span>{nombre || '…'}</span> 👋
+        </h1>
         <p>Gestiona tus consultas y pacientes.</p>
       </div>
 

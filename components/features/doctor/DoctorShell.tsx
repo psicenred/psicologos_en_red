@@ -31,12 +31,13 @@ export function DoctorShell({
   const inicial = (nombre || 'E').charAt(0).toUpperCase();
   const badgeLabel = unreadCount > 99 ? '99+' : String(unreadCount);
   const showBadge = unreadCount > 0;
+  const mobileTitle = (nombre || '').trim().split(/\s+/)[0] || 'Mi Perfil';
 
   return (
     <div className="perfil-body">
       <div className="perfil-layout" id="perfil-layout">
         <header className="perfil-mobile-header">
-          <span className="perfil-mobile-title">Panel Especialista</span>
+          <span className="perfil-mobile-title">{mobileTitle}</span>
           <input
             ref={navToggleRef}
             type="checkbox"

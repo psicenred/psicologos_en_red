@@ -14,7 +14,6 @@ type SessionState = PublicSessionState;
 function perfilLabelForSession(session: SessionState, t: (key: string, values?: { name: string }) => string) {
   if (!session.autenticado) return t('myProfile');
   if (session.rol === 'admin') return t('adminPanel');
-  if (session.rol === 'psicologo') return t('doctorPanel');
 
   const firstName = (session.nombre || '').trim().split(/\s+/)[0];
   if (firstName) return t('userProfileOf', { name: firstName });

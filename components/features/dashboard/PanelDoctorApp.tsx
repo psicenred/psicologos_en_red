@@ -123,6 +123,7 @@ export function PanelDoctorApp() {
     >
       {section === 'dashboard' && (
         <DoctorDashboardSection
+          nombre={user?.nombre}
           citas={citas as CitaDoctor[]}
           video15Min={videoConfig.activar15MinAntes !== false}
           onVideo={iniciarVideo}
