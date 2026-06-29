@@ -62,16 +62,17 @@ export function RegistroForm() {
           Accept: 'application/json',
         },
         body: new URLSearchParams(params),
-        redirect: 'manual',
       });
 
-      if (res.status >= 300 && res.status < 400) {
+      // Éxito: servidor respondió 303 (seguido automáticamente) o JSON { ok: true }
+      const llegoAExito =
+        res.redirected ||
+        /registro-exitoso/i.test(res.url) ||
+        res.type === 'opaqueredirect';
+
+      if (llegoAExito) {
         clearStoredReferralCode();
-        const location = res.headers.get('Location');
-        const path = location
-          ? new URL(location, window.location.origin).pathname
-          : '/registro-exitoso';
-        router.push(path);
+        router.push('/registro-exitoso');
         return;
       }
 
