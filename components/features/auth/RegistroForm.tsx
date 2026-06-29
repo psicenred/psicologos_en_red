@@ -1,11 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
-import { Link } from '@/i18n/routing';
+import { Link, useRouter } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -63,38 +62,57 @@ export function RegistroForm() {
           Accept: 'application/json',
         },
         body: new URLSearchParams(params),
+        redirect: 'manual',
       });
-      const data = (await res.json().catch(() => null)) as {
-        ok?: boolean;
-        redirect?: string;
-        code?: string;
-        error?: string;
-      } | null;
 
-      if (res.ok && data?.ok && data.redirect) {
+      if (res.status >= 300 && res.status < 400) {
         clearStoredReferralCode();
-        router.push(data.redirect);
+        const location = res.headers.get('Location');
+        const path = location
+          ? new URL(location, window.location.origin).pathname
+          : '/registro-exitoso';
+        router.push(path);
         return;
       }
 
-      if (data?.code === 'EMAIL_EXISTS') {
+      const contentType = res.headers.get('content-type') || '';
+      const payload = contentType.includes('application/json')
+        ? ((await res.json().catch(() => null)) as {
+            ok?: boolean;
+            redirect?: string;
+            code?: string;
+            error?: string;
+          } | null)
+        : null;
+
+      if (res.ok && payload?.ok && payload.redirect) {
+        clearStoredReferralCode();
+        router.push(payload.redirect);
+        return;
+      }
+
+      if (payload?.code === 'EMAIL_EXISTS') {
         setError(t('emailAlreadyRegistered'));
         return;
       }
-      if (data?.code === 'PHONE_TOO_LONG') {
+      if (payload?.code === 'PHONE_TOO_LONG') {
         setError(t('phoneTooLong'));
         return;
       }
-      if (data?.code === 'FIELD_TOO_LONG') {
-        setError(data.error || t('registerError'));
+      if (payload?.code === 'FIELD_TOO_LONG') {
+        setError(payload.error || t('registerError'));
         return;
       }
-      if (data?.code === 'DB_UNAVAILABLE') {
+      if (payload?.code === 'DB_UNAVAILABLE') {
         setError(t('dbUnavailable'));
         return;
       }
-      if (data?.error) {
-        setError(data.error);
+      if (payload?.code === 'SERVER_ERROR') {
+        setError(payload.error || t('registerError'));
+        return;
+      }
+      if (payload?.error) {
+        setError(payload.error);
         return;
       }
       setError(t('registerError'));
