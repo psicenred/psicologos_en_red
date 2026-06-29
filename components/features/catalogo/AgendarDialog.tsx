@@ -6,8 +6,10 @@ import { format } from 'date-fns';
 import { getZonaNavegador } from '@/lib/timezone-client';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/routing';
+import { AgendarBookingExtraFields } from '@/components/features/citas/AgendarBookingExtraFields';
 import { PerfilGestionCitaFields } from '@/components/features/perfil/PerfilGestionCitaFields';
-import { minSessionPrice } from '@/lib/catalog-pricing';
+import { ORIGEN_RECOMENDACION } from '@/lib/booking/constants';
+import { validateFirstAppointmentBooking } from '@/lib/booking/first-appointment';
 import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import type { Psicologo } from '@/components/features/catalogo/CatalogoClient';
 import '@/components/features/perfil/perfil-legacy.css';
@@ -34,9 +36,14 @@ export function AgendarDialog({
   const [mounted, setMounted] = useState(false);
   const [fecha, setFecha] = useState<Date | undefined>();
   const [hora, setHora] = useState('');
+  const [servicioInteres, setServicioInteres] = useState('');
+  const [motivoConsulta, setMotivoConsulta] = useState('');
+  const [motivoOtro, setMotivoOtro] = useState('');
+  const [origenConocimiento, setOrigenConocimiento] = useState('');
+  const [recomendadoPor, setRecomendadoPor] = useState('');
+  const [esPacienteNuevo, setEsPacienteNuevo] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [precio, setPrecio] = useState<{ amount: number; currency: string } | null>(null);
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null);
   const onCloseRef = useRef(() => onOpenChange(false));
 
@@ -48,31 +55,40 @@ export function AgendarDialog({
     setMounted(true);
   }, []);
 
+  function resetBookingFields() {
+    setFecha(undefined);
+    setHora('');
+    setServicioInteres('');
+    setMotivoConsulta('');
+    setMotivoOtro('');
+    setOrigenConocimiento('');
+    setRecomendadoPor('');
+    setEsPacienteNuevo(false);
+    setError('');
+  }
+
   useEffect(() => {
     if (!open) {
-      setFecha(undefined);
-      setHora('');
-      setError('');
-      setPrecio(null);
+      resetBookingFields();
       setLoggedIn(null);
       return;
     }
+
     fetch('/api/estado-sesion')
       .then((r) => r.json())
-      .then((d) => setLoggedIn(!!d.autenticado))
+      .then((d) => {
+        const autenticado = !!d.autenticado;
+        setLoggedIn(autenticado);
+        if (autenticado) {
+          return fetch('/api/soy-paciente-nuevo', { credentials: 'same-origin' })
+            .then((r) => r.json())
+            .then((data: { nuevo?: boolean }) => setEsPacienteNuevo(data.nuevo === true))
+            .catch(() => setEsPacienteNuevo(false));
+        }
+        setEsPacienteNuevo(false);
+      })
       .catch(() => setLoggedIn(false));
-
-    if (region && !region.regionUnknown && region.currency && psicologo) {
-      setPrecio({
-        amount: minSessionPrice(psicologo, region.currency),
-        currency: region.currency,
-      });
-    } else if (region && !region.regionUnknown && region.currency) {
-      setPrecio({ amount: region.amount, currency: region.currency });
-    } else {
-      setPrecio(null);
-    }
-  }, [open, psicologo, region]);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -83,23 +99,70 @@ export function AgendarDialog({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, loading]);
 
+  function handleServicioChange(value: string) {
+    setServicioInteres(value);
+    setMotivoConsulta('');
+    setMotivoOtro('');
+  }
+
   async function confirmar() {
     if (!psicologo || !fecha || !hora) return;
+
+    if (region?.regionUnknown || !region?.currency) {
+      setError(t('selectRegionForPrices'));
+      return;
+    }
+
+    const servicios = (psicologo.servicios ?? []).filter(Boolean);
+    if (servicios.length === 0) {
+      setError(t('noServicesToBook'));
+      return;
+    }
+
+    const validation = validateFirstAppointmentBooking({
+      esPacienteNuevo,
+      servicioInteres,
+      motivoConsulta,
+      motivoOtro,
+    });
+    if (!validation.ok) {
+      setError(t(validation.errorKey));
+      return;
+    }
+
     setLoading(true);
     setError('');
+
+    const payload: Record<string, string | number | undefined> = {
+      psicologo_id: psicologo.id,
+      fecha: format(fecha, 'yyyy-MM-dd'),
+      hora,
+      servicio_interes: servicioInteres,
+      zona_horaria_paciente: getZonaNavegador(),
+      currency: region.currency,
+      success_url: `${window.location.origin}/perfil?pago=exito`,
+      cancel_url: `${window.location.origin}/catalogo`,
+    };
+
+    if (validation.motivoDeConsulta) {
+      payload.motivo_de_consulta = validation.motivoDeConsulta;
+    }
+
+    if (esPacienteNuevo && origenConocimiento.trim()) {
+      payload.origen_conocimiento = origenConocimiento.trim();
+      if (
+        origenConocimiento === ORIGEN_RECOMENDACION &&
+        recomendadoPor.trim()
+      ) {
+        payload.recomendado_por = recomendadoPor.trim().slice(0, 200);
+      }
+    }
+
     try {
       const res = await fetch('/api/crear-sesion-pago', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          psicologo_id: psicologo.id,
-          fecha: format(fecha, 'yyyy-MM-dd'),
-          hora,
-          zona_horaria_paciente: getZonaNavegador(),
-          currency: region?.currency || undefined,
-          success_url: `${window.location.origin}/perfil?pago=exito`,
-          cancel_url: `${window.location.origin}/catalogo`,
-        }),
+        body: JSON.stringify(payload),
       });
       if (res.status === 401) {
         setLoggedIn(false);
@@ -108,16 +171,26 @@ export function AgendarDialog({
       }
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || t('loginRequired'));
+        setError(data.error || t('paymentStartError'));
         return;
       }
       if (data.url) window.location.href = data.url;
     } catch {
-      setError(t('loginRequired'));
+      setError(t('paymentStartError'));
     } finally {
       setLoading(false);
     }
   }
+
+  const serviciosDisponibles = (psicologo?.servicios ?? []).filter(Boolean);
+  const canSubmit =
+    !!fecha &&
+    !!hora &&
+    !!servicioInteres &&
+    serviciosDisponibles.length > 0 &&
+    !loading &&
+    loggedIn === true &&
+    !region?.regionUnknown;
 
   if (!open || !mounted) return null;
 
@@ -132,7 +205,7 @@ export function AgendarDialog({
       }}
     >
       <div
-        className="perfil-modal perfil-modal-gestion-cita"
+        className="perfil-modal perfil-modal-gestion-cita perfil-modal-gestion-cita-wide"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 id="gestion-cita-titulo">
@@ -167,22 +240,29 @@ export function AgendarDialog({
           </div>
         ) : psicologo ? (
           <>
-            {precio ? (
-              <p className="perfil-modal-subtitulo">
-                {t('sessionPrice')}:{' '}
-                <strong>
-                  {precio.currency === 'USD' ? 'US$' : '$'}
-                  {precio.amount} {precio.currency}
-                </strong>
-              </p>
-            ) : null}
-
             <PerfilGestionCitaFields
               psicologoId={psicologo.id}
               fecha={fecha}
               setFecha={setFecha}
               hora={hora}
               setHora={setHora}
+            />
+
+            <AgendarBookingExtraFields
+              psicologo={psicologo}
+              currency={region?.currency ?? ''}
+              regionUnknown={region?.regionUnknown}
+              esPacienteNuevo={esPacienteNuevo}
+              servicioInteres={servicioInteres}
+              onServicioChange={handleServicioChange}
+              motivoConsulta={motivoConsulta}
+              onMotivoChange={setMotivoConsulta}
+              motivoOtro={motivoOtro}
+              onMotivoOtroChange={setMotivoOtro}
+              origenConocimiento={origenConocimiento}
+              onOrigenChange={setOrigenConocimiento}
+              recomendadoPor={recomendadoPor}
+              onRecomendadoChange={setRecomendadoPor}
             />
 
             {error ? <p className="gestion-cita-error">{error}</p> : null}
@@ -198,7 +278,7 @@ export function AgendarDialog({
               <button
                 type="button"
                 className="btn-primary"
-                disabled={!fecha || !hora || loading || loggedIn === null}
+                disabled={!canSubmit}
                 onClick={confirmar}
               >
                 {loading ? t('redirectingPay') : t('continuePay')}

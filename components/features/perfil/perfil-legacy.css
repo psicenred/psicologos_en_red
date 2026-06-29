@@ -1150,6 +1150,44 @@ body.video-pseudo-fullscreen .perfil-video-container {
   margin: 6px 0 0;
 }
 
+.gestion-cita-campos-extra {
+  margin-top: 12px;
+}
+
+.gestion-cita-field textarea {
+  width: 100%;
+  border: 2px solid var(--suave-arena, #e8dfd0);
+  border-radius: 10px;
+  padding: 10px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  min-height: 70px;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.gestion-cita-precio-sesion {
+  font-size: 0.9rem;
+  color: var(--primario-rosa, #c9a0dc);
+  font-weight: 600;
+  margin: 4px 0 0;
+}
+
+.gestion-cita-precio-hint,
+.gestion-cita-hint {
+  font-size: 0.8rem;
+  color: #888;
+  margin: 4px 0 0;
+}
+
+.gestion-cita-required {
+  color: var(--primario-rosa, #c9a0dc);
+}
+
+.perfil-modal-gestion-cita-wide {
+  max-width: 520px;
+}
+
 .gestion-cita-error {
   font-size: 0.85rem;
   color: #e74c3c;
