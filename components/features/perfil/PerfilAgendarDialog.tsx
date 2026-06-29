@@ -4,24 +4,43 @@ import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { fetchPrecioRegionClient } from '@/lib/geo-client';
 import { getZonaNavegador } from '@/lib/timezone-client';
+import {
+  formatEtiquetaSesion,
+  servicioInteresOrDefault,
+} from '@/lib/booking/format-servicio';
+import { sessionPriceForService } from '@/lib/catalog-pricing';
 import { PerfilGestionCitaFields } from '@/components/features/perfil/PerfilGestionCitaFields';
+
+type PsicologoPricingRow = {
+  precio_terapia_individual: number | null;
+  precio_terapia_individual_usd: number | null;
+  precio_terapia_pareja?: number | null;
+  precio_terapia_pareja_usd?: number | null;
+  precio_asesoria_crianza?: number | null;
+  precio_asesoria_crianza_usd?: number | null;
+};
 
 export function PerfilAgendarDialog({
   open,
   onOpenChange,
   psicologoId,
   psicologoNombre,
+  servicioInteres,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   psicologoId: number;
   psicologoNombre: string;
+  /** Tipo de sesión de la cita desde la que se abrió (agendar otra). */
+  servicioInteres?: string | null;
 }) {
+  const servicio = servicioInteresOrDefault(servicioInteres);
   const [fecha, setFecha] = useState<Date | undefined>();
   const [hora, setHora] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [currency, setCurrency] = useState<string | undefined>();
+  const [pricing, setPricing] = useState<PsicologoPricingRow | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -29,9 +48,11 @@ export function PerfilAgendarDialog({
       setHora('');
       setError('');
       setCurrency(undefined);
+      setPricing(null);
       setLoading(false);
       return;
     }
+
     fetchPrecioRegionClient()
       .then((region) => {
         if (!region.regionUnknown && region.currency) {
@@ -39,7 +60,14 @@ export function PerfilAgendarDialog({
         }
       })
       .catch(() => {});
-  }, [open]);
+
+    fetch(`/api/psicologo/${psicologoId}`)
+      .then((r) => r.json())
+      .then((json: { datos?: PsicologoPricingRow }) => {
+        if (json.datos) setPricing(json.datos);
+      })
+      .catch(() => {});
+  }, [open, psicologoId]);
 
   useEffect(() => {
     if (!open) return;
@@ -53,6 +81,11 @@ export function PerfilAgendarDialog({
       window.removeEventListener('keydown', onKey);
     };
   }, [open, loading, onOpenChange]);
+
+  const precioSesion =
+    pricing && currency
+      ? sessionPriceForService(pricing, servicio, currency)
+      : null;
 
   async function confirmar() {
     if (!fecha || !hora) {
@@ -70,7 +103,7 @@ export function PerfilAgendarDialog({
           fecha: format(fecha, 'yyyy-MM-dd'),
           hora,
           zona_horaria_paciente: getZonaNavegador(),
-          servicio_interes: 'Sesión de psicoterapia',
+          servicio_interes: servicio,
           currency,
           success_url: `${window.location.origin}/perfil?pago=exito`,
           cancel_url: `${window.location.origin}/perfil`,
@@ -115,6 +148,17 @@ export function PerfilAgendarDialog({
           </p>
         ) : null}
 
+        <p className="cita-tipo-sesion-label">{formatEtiquetaSesion(servicio)}</p>
+        {precioSesion != null && currency ? (
+          <p className="gestion-cita-precio-sesion">
+            Precio de esta sesión:{' '}
+            <strong>
+              {currency === 'USD' ? 'US$' : '$'}
+              {precioSesion} {currency}
+            </strong>
+          </p>
+        ) : null}
+
         <PerfilGestionCitaFields
           psicologoId={psicologoId}
           fecha={fecha}
@@ -135,7 +179,7 @@ export function PerfilAgendarDialog({
             disabled={!fecha || !hora || loading}
             onClick={confirmar}
           >
-            {loading ? 'Guardando…' : 'Guardar'}
+            {loading ? 'Redirigiendo a pago…' : 'Confirmar reservación'}
           </button>
         </div>
       </div>

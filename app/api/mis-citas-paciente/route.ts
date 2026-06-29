@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     let result;
     try {
       result = await query(
-        `SELECT c.id, c.fecha, c.hora, c.estado, c.link_sesion, c.psicologo_id, p.nombre as psicologo_nombre,
+        `SELECT c.id, c.fecha, c.hora, c.estado, c.link_sesion, c.psicologo_id, c.servicio_interes, p.nombre as psicologo_nombre,
                 ${SQL_CITA_INSTANT_ISO_C} AS fecha_hora_utc, c.zona_horaria
          FROM citas c
          JOIN psicologos p ON c.psicologo_id = p.id
@@ -32,6 +32,16 @@ export async function GET(request: Request) {
           `SELECT c.id, c.fecha, c.hora, c.estado, c.link_sesion, c.psicologo_id, p.nombre as psicologo_nombre
            FROM citas c JOIN psicologos p ON c.psicologo_id = p.id
            WHERE c.paciente_id = $1 ORDER BY c.fecha ASC, c.hora ASC`,
+          [auth.id],
+        );
+      } else if (msg.includes('servicio_interes')) {
+        result = await query(
+          `SELECT c.id, c.fecha, c.hora, c.estado, c.link_sesion, c.psicologo_id, p.nombre as psicologo_nombre,
+                  ${SQL_CITA_INSTANT_ISO_C} AS fecha_hora_utc, c.zona_horaria
+           FROM citas c
+           JOIN psicologos p ON c.psicologo_id = p.id
+           WHERE c.paciente_id = $1
+           ORDER BY c.fecha ASC, c.hora ASC`,
           [auth.id],
         );
       } else {

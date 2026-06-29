@@ -13,6 +13,7 @@ import {
   puedeUnirseVideo,
   splitCitasDoctor,
 } from './doctor-helpers';
+import { formatEtiquetaSesion } from '@/lib/booking/format-servicio';
 
 const HISTORIAL_PAGE = 6;
 
@@ -82,6 +83,7 @@ function CitaCardDoctor({
     <div className={`cita-card ${esFutura ? 'border-dorado' : 'grisaceo'}`}>
       <div className="cita-info">
         <h4>{cita.paciente_nombre}</h4>
+        <p className="cita-tipo-sesion-label">{formatEtiquetaSesion(cita.servicio_interes)}</p>
         <span>
           {formatCitaFecha(cita, zonaVisualizacion)} | {formatCitaHora(cita, zonaVisualizacion)}
         </span>

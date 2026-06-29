@@ -22,6 +22,7 @@ export async function GET(request: Request) {
         c.link_sesion,
         c.notas,
         c.motivo_de_consulta AS motivo,
+        c.servicio_interes,
         u.nombre AS paciente_nombre,
         u.id AS paciente_usuario_id,
         u.id AS id_para_chat,
@@ -39,7 +40,12 @@ export async function GET(request: Request) {
       result = await query(sqlConTz, [auth.id]);
     } catch (e) {
       const msg = (e as Error).message || '';
-      if (msg.includes('zona_horaria') || msg.includes('fecha_hora_utc')) {
+      if (msg.includes('servicio_interes')) {
+        result = await query(
+          sqlConTz.replace('c.servicio_interes,\n        ', ''),
+          [auth.id],
+        );
+      } else if (msg.includes('zona_horaria') || msg.includes('fecha_hora_utc')) {
         result = await query(
           `SELECT c.id AS cita_id, c.fecha, c.hora, c.estado, c.link_sesion, c.notas,
                   c.motivo_de_consulta AS motivo,

@@ -45,11 +45,13 @@ export async function POST(request: Request) {
       recomendadoPor: body.recomendado_por
         ? String(body.recomendado_por)
         : null,
+      servicioInteres: body.servicio_interes
+        ? String(body.servicio_interes)
+        : null,
       pacienteZonaHoraria: body.zona_horaria_paciente
         ? String(body.zona_horaria_paciente)
         : null,
     });
-
     if ('error' in result) {
       return NextResponse.json({ error: result.error }, { status: result.status });
     }

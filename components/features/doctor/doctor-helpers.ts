@@ -17,6 +17,7 @@ export type CitaDoctor = {
   fecha_hora_utc?: string | null;
   zona_horaria_psicologo?: string | null;
   motivo?: string | null;
+  servicio_interes?: string | null;
 };
 
 export function getCitaDateTime(cita: CitaDoctor): Date {

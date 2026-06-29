@@ -6,6 +6,7 @@ import { DailyRoom } from '@/components/features/video/DailyRoom';
 import { PrivateChat } from '@/components/features/chat/PrivateChat';
 import { useVideoFullscreen } from '@/lib/hooks/useVideoFullscreen';
 import { ReagendarDialog } from '@/components/features/citas/ReagendarDialog';
+import { formatEtiquetaSesion } from '@/lib/booking/format-servicio';
 import { PerfilAgendarDialog } from '@/components/features/perfil/PerfilAgendarDialog';
 import { ReferralSharePanel } from '@/components/features/perfil/ReferralSharePanel';
 import {
@@ -150,7 +151,10 @@ function CitaCard({
   return (
     <div className="cita-card-panel cita-card-v2">
       <div className="cita-card-header">
-        <h4 className="cita-card-title">Sesión con {cita.psicologo_nombre}</h4>
+        <div className="cita-card-header-text">
+          <h4 className="cita-card-title">Sesión con {cita.psicologo_nombre}</h4>
+          <p className="cita-tipo-sesion-label">{formatEtiquetaSesion(cita.servicio_interes)}</p>
+        </div>
         <span className={`cita-estado-pill ${estadoClass(estado)}`}>{estado}</span>
       </div>
       <div className="cita-card-meta">
@@ -200,9 +204,11 @@ export function PerfilCitasSection({
   joiningCitaId?: number | null;
 }) {
   const [reagendar, setReagendar] = useState<CitaPaciente | null>(null);
-  const [agendar, setAgendar] = useState<{ psicologoId: number; nombre: string } | null>(
-    null,
-  );
+  const [agendar, setAgendar] = useState<{
+    psicologoId: number;
+    nombre: string;
+    servicioInteres?: string | null;
+  } | null>(null);
   const [historialLimit, setHistorialLimit] = useState(HISTORIAL_PAGE);
   const [opinion, setOpinion] = useState<{
     psicologoId: number;
@@ -278,7 +284,11 @@ export function PerfilCitasSection({
                     setOpinion({ psicologoId: c.psicologo_id, nombre: c.psicologo_nombre })
                   }
                   onAgendarOtra={() =>
-                    setAgendar({ psicologoId: c.psicologo_id, nombre: c.psicologo_nombre })
+                    setAgendar({
+                      psicologoId: c.psicologo_id,
+                      nombre: c.psicologo_nombre,
+                      servicioInteres: c.servicio_interes,
+                    })
                   }
                   onDetalle={() => setDetalle(c)}
                 />
@@ -308,7 +318,11 @@ export function PerfilCitasSection({
                     setOpinion({ psicologoId: c.psicologo_id, nombre: c.psicologo_nombre })
                   }
                   onAgendarOtra={() =>
-                    setAgendar({ psicologoId: c.psicologo_id, nombre: c.psicologo_nombre })
+                    setAgendar({
+                      psicologoId: c.psicologo_id,
+                      nombre: c.psicologo_nombre,
+                      servicioInteres: c.servicio_interes,
+                    })
                   }
                   onDetalle={() => setDetalle(c)}
                 />
@@ -349,6 +363,7 @@ export function PerfilCitasSection({
           onOpenChange={(o) => !o && setAgendar(null)}
           psicologoId={agendar.psicologoId}
           psicologoNombre={agendar.nombre}
+          servicioInteres={agendar.servicioInteres}
         />
       ) : null}
 

@@ -14,6 +14,7 @@ export type CitaPaciente = {
   link_sesion?: string | null;
   fecha_hora_utc?: string | null;
   zona_horaria?: string | null;
+  servicio_interes?: string | null;
 };
 
 export function getCitaDateTime(cita: CitaPaciente): Date {

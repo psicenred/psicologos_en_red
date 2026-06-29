@@ -17,6 +17,7 @@ import {
   getReferidorDiscountForPayment,
   procesarPrimeraCitaReferido,
 } from '@/lib/referral/service';
+import { normalizeServicioInteres } from '@/lib/booking/format-servicio';
 import type Stripe from 'stripe';
 
 function linkSesion(pacienteId: number, psicologoId: number): string {
@@ -32,6 +33,7 @@ export async function insertCitaFromWebhook(params: {
   motivoDeConsulta: string | null;
   origenConocimiento: string | null;
   recomendadoPor: string | null;
+  servicioInteres?: string | null;
 }): Promise<{ id: number | null; fecha_hora_utc: string | null }> {
   const {
     pacienteId,
@@ -42,9 +44,61 @@ export async function insertCitaFromWebhook(params: {
     motivoDeConsulta,
     origenConocimiento,
     recomendadoPor,
+    servicioInteres,
   } = params;
 
+  const servicio = normalizeServicioInteres(servicioInteres);
+
   const insertWithPaymentIntent = () =>
+    query(
+      `INSERT INTO citas (paciente_id, psicologo_id, fecha, hora, link_sesion, zona_horaria, fecha_hora_utc, stripe_payment_intent_id, motivo_de_consulta, origen_conocimiento, recomendado_por, servicio_interes)
+       SELECT $1, $2, $3, $4, $5,
+         CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
+              ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END,
+         (($3::date + $4::time) AT TIME ZONE (CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
+              ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END))::timestamptz::text,
+         $6, $7, $8, $9, $10
+       FROM psicologos p WHERE p.id = $2
+       RETURNING id, fecha_hora_utc`,
+      [
+        pacienteId,
+        psicologoId,
+        fecha,
+        hora,
+        linkSesion(pacienteId, psicologoId),
+        paymentIntentId,
+        motivoDeConsulta,
+        origenConocimiento,
+        recomendadoPor,
+        servicio,
+      ],
+    );
+
+  const insertSinStripe = () =>
+    query(
+      `INSERT INTO citas (paciente_id, psicologo_id, fecha, hora, link_sesion, zona_horaria, fecha_hora_utc, motivo_de_consulta, origen_conocimiento, recomendado_por, servicio_interes)
+       SELECT $1, $2, $3, $4, $5,
+         CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
+              ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END,
+         (($3::date + $4::time) AT TIME ZONE (CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
+              ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END))::timestamptz::text,
+         $6, $7, $8, $9
+       FROM psicologos p WHERE p.id = $2
+       RETURNING id, fecha_hora_utc`,
+      [
+        pacienteId,
+        psicologoId,
+        fecha,
+        hora,
+        linkSesion(pacienteId, psicologoId),
+        motivoDeConsulta,
+        origenConocimiento,
+        recomendadoPor,
+        servicio,
+      ],
+    );
+
+  const insertLegacyWithPaymentIntent = () =>
     query(
       `INSERT INTO citas (paciente_id, psicologo_id, fecha, hora, link_sesion, zona_horaria, fecha_hora_utc, stripe_payment_intent_id, motivo_de_consulta, origen_conocimiento, recomendado_por)
        SELECT $1, $2, $3, $4, $5,
@@ -68,7 +122,7 @@ export async function insertCitaFromWebhook(params: {
       ],
     );
 
-  const insertSinStripe = () =>
+  const insertLegacySinStripe = () =>
     query(
       `INSERT INTO citas (paciente_id, psicologo_id, fecha, hora, link_sesion, zona_horaria, fecha_hora_utc, motivo_de_consulta, origen_conocimiento, recomendado_por)
        SELECT $1, $2, $3, $4, $5,
@@ -96,12 +150,25 @@ export async function insertCitaFromWebhook(params: {
     return rowInsertCita(result.rows[0]);
   } catch (err) {
     const msg = (err as Error).message || '';
+    if (msg.includes('servicio_interes')) {
+      const result = await insertLegacyWithPaymentIntent();
+      return rowInsertCita(result.rows[0]);
+    }
     if (
       msg.includes('stripe_payment_intent_id') ||
       msg.includes('does not exist')
     ) {
-      const result = await insertSinStripe();
-      return rowInsertCita(result.rows[0]);
+      try {
+        const result = await insertSinStripe();
+        return rowInsertCita(result.rows[0]);
+      } catch (err2) {
+        const msg2 = (err2 as Error).message || '';
+        if (msg2.includes('servicio_interes')) {
+          const result = await insertLegacySinStripe();
+          return rowInsertCita(result.rows[0]);
+        }
+        throw err2;
+      }
     }
     throw err;
   }
@@ -128,6 +195,7 @@ export async function agendarCita(params: {
   psicologoId: number;
   fecha: string;
   hora: string;
+  servicioInteres?: string | null;
   motivoDeConsulta?: string | null;
   origenConocimiento?: string | null;
   recomendadoPor?: string | null;
@@ -161,23 +229,24 @@ export async function agendarCita(params: {
     (params.recomendadoPor &&
       String(params.recomendadoPor).trim().slice(0, 200)) ||
     null;
+  const servicio = normalizeServicioInteres(params.servicioInteres);
 
   const sqlWithMotivo = motivo
-    ? `INSERT INTO citas (paciente_id, psicologo_id, fecha, hora, link_sesion, motivo_de_consulta, zona_horaria, fecha_hora_utc, origen_conocimiento, recomendado_por)
+    ? `INSERT INTO citas (paciente_id, psicologo_id, fecha, hora, link_sesion, motivo_de_consulta, servicio_interes, zona_horaria, fecha_hora_utc, origen_conocimiento, recomendado_por)
+       SELECT $1, $2, $3, $4, $5, $6, $7,
+         CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
+              ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END,
+         (($3::date + $4::time) AT TIME ZONE (CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
+              ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END))::timestamptz::text,
+         $8, $9
+       FROM psicologos p WHERE p.id = $2 RETURNING id, fecha_hora_utc`
+    : `INSERT INTO citas (paciente_id, psicologo_id, fecha, hora, link_sesion, servicio_interes, zona_horaria, fecha_hora_utc, origen_conocimiento, recomendado_por)
        SELECT $1, $2, $3, $4, $5, $6,
          CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
               ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END,
          (($3::date + $4::time) AT TIME ZONE (CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
               ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END))::timestamptz::text,
          $7, $8
-       FROM psicologos p WHERE p.id = $2 RETURNING id, fecha_hora_utc`
-    : `INSERT INTO citas (paciente_id, psicologo_id, fecha, hora, link_sesion, zona_horaria, fecha_hora_utc, origen_conocimiento, recomendado_por)
-       SELECT $1, $2, $3, $4, $5,
-         CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
-              ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END,
-         (($3::date + $4::time) AT TIME ZONE (CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
-              ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END))::timestamptz::text,
-         $6, $7
        FROM psicologos p WHERE p.id = $2 RETURNING id, fecha_hora_utc`;
 
   const sqlParams = motivo
@@ -188,6 +257,7 @@ export async function agendarCita(params: {
         params.hora,
         linkSesion(params.pacienteId, params.psicologoId),
         motivo,
+        servicio,
         origen,
         recomendado,
       ]
@@ -197,6 +267,7 @@ export async function agendarCita(params: {
         params.fecha,
         params.hora,
         linkSesion(params.pacienteId, params.psicologoId),
+        servicio,
         origen,
         recomendado,
       ];
@@ -455,7 +526,15 @@ export async function crearSesionPago(
     };
   }
 
-  const servicioLower = (params.servicioInteres || '').toLowerCase();
+  const servicioNorm = normalizeServicioInteres(params.servicioInteres);
+  if (!servicioNorm) {
+    return {
+      error: 'Selecciona el tipo de servicio.',
+      status: 400,
+    };
+  }
+
+  const servicioLower = servicioNorm.toLowerCase();
   if (servicioLower.includes('individual')) {
     const countCitas = await query(
       'SELECT 1 FROM citas WHERE paciente_id = $1 LIMIT 1',
@@ -502,7 +581,7 @@ export async function crearSesionPago(
   const useUsd = region.currency === 'USD';
   const pricing = await calcularMontoStripe(
     params.psicologoId,
-    params.servicioInteres,
+    servicioNorm,
     useUsd,
   );
   if (!pricing) {
@@ -555,7 +634,7 @@ export async function crearSesionPago(
             name:
               testAmountMxn > 0
                 ? `Prueba de pago (${Math.max(testAmountMxn, 10)} MXN)`
-                : params.servicioInteres || 'Sesión de psicoterapia',
+                : servicioNorm,
             description:
               testAmountMxn > 0
                 ? 'Pago de prueba - quitar STRIPE_TEST_AMOUNT_MXN después'
@@ -579,9 +658,7 @@ export async function crearSesionPago(
         monto_original: String(montoOriginal),
         monto_final: String(montoFinal),
       }),
-      ...(params.servicioInteres && {
-        servicio_interes: String(params.servicioInteres),
-      }),
+      servicio_interes: servicioNorm,
       ...(motivoMeta ? { motivo_de_consulta: motivoMeta } : {}),
       ...(params.origenConocimiento &&
         params.origenConocimiento.length <= 80 && {
@@ -632,6 +709,10 @@ export async function handleStripeCheckoutCompleted(
     (meta.motivo_de_consulta &&
       String(meta.motivo_de_consulta).trim().slice(0, 200)) ||
     null;
+  const servicioInteres =
+    (meta.servicio_interes &&
+      String(meta.servicio_interes).trim().slice(0, 100)) ||
+    null;
   const pacienteZonaHoraria = meta.paciente_zona_horaria
     ? String(meta.paciente_zona_horaria).trim().slice(0, 64)
     : null;
@@ -661,6 +742,7 @@ export async function handleStripeCheckoutCompleted(
     motivoDeConsulta,
     origenConocimiento,
     recomendadoPor,
+    servicioInteres,
   });
 
   await procesarPrimeraCitaReferido(pacienteIdNum);

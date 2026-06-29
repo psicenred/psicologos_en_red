@@ -516,9 +516,13 @@
 }
 
 .cita-info h4 {
-  margin: 0 0 8px;
+  margin: 0 0 2px;
   color: #2c3e50;
   font-size: 1.2rem;
+}
+
+.cita-info .cita-tipo-sesion-label {
+  margin: 0 0 6px;
 }
 
 .cita-info span {
