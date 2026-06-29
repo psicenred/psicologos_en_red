@@ -30,7 +30,13 @@ export async function POST(request: Request) {
 
     if ('redirect' in result) {
       if (json) {
-        return NextResponse.json({ ok: true, redirect: result.redirect });
+        return NextResponse.json(
+          { ok: true, redirect: result.redirect },
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json; charset=utf-8' },
+          },
+        );
       }
       return redirectGet(new URL(result.redirect, request.url));
     }

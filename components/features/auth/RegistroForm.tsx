@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
-import { Link, useRouter } from '@/i18n/routing';
+import { Link } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,11 +13,15 @@ import { DEFAULT_PHONE_COUNTRY_DIAL } from '@/lib/phone/country-codes';
 import { formatPhoneWithCountryCode } from '@/lib/phone/format';
 import { registroSchema, type RegistroInput } from '@/lib/schemas/auth';
 import { clearStoredReferralCode, getStoredReferralCode } from '@/lib/referral/client';
+import {
+  interpretRegistroResponse,
+  navigateAfterRegistroSuccess,
+  parseRegistroPayload,
+} from '@/lib/auth/registro-response';
 
 export function RegistroForm() {
   const t = useTranslations('auth');
   const [error, setError] = useState('');
-  const router = useRouter();
   const {
     register,
     control,
@@ -64,56 +68,43 @@ export function RegistroForm() {
         body: new URLSearchParams(params),
       });
 
-      // Éxito: servidor respondió 303 (seguido automáticamente) o JSON { ok: true }
-      const llegoAExito =
-        res.redirected ||
-        /registro-exitoso/i.test(res.url) ||
-        res.type === 'opaqueredirect';
+      const payload = await parseRegistroPayload(res);
+      const result = interpretRegistroResponse({
+        status: res.status,
+        redirected: res.redirected,
+        url: res.url,
+        type: res.type,
+        payload,
+      });
 
-      if (llegoAExito) {
+      if (result.kind === 'success') {
         clearStoredReferralCode();
-        router.push('/registro-exitoso');
+        navigateAfterRegistroSuccess(result.redirect);
         return;
       }
 
-      const contentType = res.headers.get('content-type') || '';
-      const payload = contentType.includes('application/json')
-        ? ((await res.json().catch(() => null)) as {
-            ok?: boolean;
-            redirect?: string;
-            code?: string;
-            error?: string;
-          } | null)
-        : null;
-
-      if (res.ok && payload?.ok && payload.redirect) {
-        clearStoredReferralCode();
-        router.push(payload.redirect);
-        return;
-      }
-
-      if (payload?.code === 'EMAIL_EXISTS') {
+      if (result.code === 'EMAIL_EXISTS') {
         setError(t('emailAlreadyRegistered'));
         return;
       }
-      if (payload?.code === 'PHONE_TOO_LONG') {
+      if (result.code === 'PHONE_TOO_LONG') {
         setError(t('phoneTooLong'));
         return;
       }
-      if (payload?.code === 'FIELD_TOO_LONG') {
-        setError(payload.error || t('registerError'));
+      if (result.code === 'FIELD_TOO_LONG') {
+        setError(result.message || t('registerError'));
         return;
       }
-      if (payload?.code === 'DB_UNAVAILABLE') {
+      if (result.code === 'DB_UNAVAILABLE') {
         setError(t('dbUnavailable'));
         return;
       }
-      if (payload?.code === 'SERVER_ERROR') {
-        setError(payload.error || t('registerError'));
+      if (result.code === 'SERVER_ERROR') {
+        setError(result.message || t('registerError'));
         return;
       }
-      if (payload?.error) {
-        setError(payload.error);
+      if (result.message) {
+        setError(result.message);
         return;
       }
       setError(t('registerError'));
