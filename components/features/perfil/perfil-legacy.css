@@ -1058,21 +1058,9 @@ body.video-pseudo-fullscreen .perfil-video-container {
   background: rgba(0, 0, 0, 0.6);
   z-index: 3000;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
-    max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-}
-
-.perfil-modal-overlay::before,
-.perfil-modal-overlay::after {
-  content: '';
-  flex: 1 0 auto;
-  width: 100%;
-  pointer-events: none;
+  justify-content: center;
+  padding: 20px;
 }
 
 .perfil-modal {
@@ -1082,7 +1070,6 @@ body.video-pseudo-fullscreen .perfil-video-container {
   width: 90%;
   max-width: 420px;
   position: relative;
-  flex: 0 0 auto;
 }
 
 .perfil-modal h3 {
@@ -1209,7 +1196,33 @@ body.video-pseudo-fullscreen .perfil-video-container {
   color: var(--primario-rosa, #c9a0dc);
 }
 
-.perfil-modal-gestion-cita {
+.perfil-modal-gestion-cita-wide {
+  max-width: 520px;
+}
+
+/* Scroll solo en popup largo del catálogo (primera cita), no en perfil */
+.catalogo-agendar-overlay {
+  flex-direction: column;
+  padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
+    max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.catalogo-agendar-overlay::before,
+.catalogo-agendar-overlay::after {
+  content: '';
+  flex: 1 0 auto;
+  width: 100%;
+  pointer-events: none;
+}
+
+.catalogo-agendar-overlay .perfil-modal {
+  flex: 0 0 auto;
+}
+
+.catalogo-agendar-overlay .perfil-modal-gestion-cita {
   max-height: calc(
     100dvh - max(40px, env(safe-area-inset-top) + env(safe-area-inset-bottom))
   );
@@ -1218,15 +1231,15 @@ body.video-pseudo-fullscreen .perfil-video-container {
   overflow: hidden;
 }
 
-.perfil-modal-gestion-cita-header {
+.catalogo-agendar-overlay .perfil-modal-gestion-cita-header {
   flex-shrink: 0;
 }
 
-.perfil-modal-gestion-cita-header h3 {
+.catalogo-agendar-overlay .perfil-modal-gestion-cita-header h3 {
   margin-top: 0;
 }
 
-.perfil-modal-gestion-cita-body {
+.catalogo-agendar-overlay .perfil-modal-gestion-cita-body {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -1234,15 +1247,11 @@ body.video-pseudo-fullscreen .perfil-video-container {
   -webkit-overflow-scrolling: touch;
 }
 
-.perfil-modal-gestion-cita .perfil-modal-actions {
+.catalogo-agendar-overlay .perfil-modal-gestion-cita .perfil-modal-actions {
   flex-shrink: 0;
   margin-top: 0;
   padding-top: 16px;
   border-top: 1px solid #eee;
-}
-
-.perfil-modal-gestion-cita-wide {
-  max-width: 520px;
 }
 
 .gestion-cita-error {

@@ -96,26 +96,22 @@ export function ReagendarDialog({
         className="perfil-modal perfil-modal-gestion-cita"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="perfil-modal-gestion-cita-header">
-          <h3 id="gestion-cita-titulo">Reagendar cita</h3>
-          {psicologoNombre ? (
-            <p id="gestion-cita-subtitulo" className="perfil-modal-subtitulo">
-              Psicólogo: {psicologoNombre}
-            </p>
-          ) : null}
-        </div>
+        <h3 id="gestion-cita-titulo">Reagendar cita</h3>
+        {psicologoNombre ? (
+          <p id="gestion-cita-subtitulo" className="perfil-modal-subtitulo">
+            Psicólogo: {psicologoNombre}
+          </p>
+        ) : null}
 
-        <div className="perfil-modal-gestion-cita-body">
-          <PerfilGestionCitaFields
-            psicologoId={psicologoId}
-            fecha={fecha}
-            setFecha={setFecha}
-            hora={hora}
-            setHora={setHora}
-          />
+        <PerfilGestionCitaFields
+          psicologoId={psicologoId}
+          fecha={fecha}
+          setFecha={setFecha}
+          hora={hora}
+          setHora={setHora}
+        />
 
-          {error ? <p className="gestion-cita-error">{error}</p> : null}
-        </div>
+        {error ? <p className="gestion-cita-error">{error}</p> : null}
 
         <div className="perfil-modal-actions">
           <button type="button" disabled={loading} onClick={() => onOpenChange(false)}>
