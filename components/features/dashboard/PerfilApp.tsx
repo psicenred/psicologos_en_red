@@ -77,10 +77,34 @@ export function PerfilApp() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('pago') === 'exito') {
-      refetchCitas();
-      setSection('citas');
-    }
+    if (params.get('pago') !== 'exito') return;
+
+    const sessionId = params.get('session_id');
+    window.history.replaceState({}, '', window.location.pathname);
+    setSection('citas');
+
+    void (async () => {
+      if (sessionId) {
+        try {
+          await fetch('/api/confirmar-pago-stripe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ session_id: sessionId }),
+          });
+        } catch {
+          /* webhook o reintento posterior */
+        }
+      }
+
+      for (let i = 0; i < 6; i++) {
+        const result = await refetchCitas();
+        const rows = result.data as CitaPaciente[] | undefined;
+        if (rows && rows.length > 0) break;
+        if (!sessionId && i >= 2) break;
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    })();
   }, [refetchCitas]);
 
   const iniciarVideo = useCallback(

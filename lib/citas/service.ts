@@ -18,6 +18,7 @@ import {
   procesarPrimeraCitaReferido,
 } from '@/lib/referral/service';
 import { normalizeServicioInteres } from '@/lib/booking/format-servicio';
+import { withCheckoutSessionId } from '@/lib/stripe/checkout-success-url';
 import type Stripe from 'stripe';
 
 function linkSesion(pacienteId: number, psicologoId: number): string {
@@ -147,11 +148,17 @@ export async function insertCitaFromWebhook(params: {
 
   try {
     const result = await insertWithPaymentIntent();
+    if (!result.rows[0]) {
+      throw new Error('No se pudo crear la cita: psicólogo no encontrado');
+    }
     return rowInsertCita(result.rows[0]);
   } catch (err) {
     const msg = (err as Error).message || '';
     if (msg.includes('servicio_interes')) {
       const result = await insertLegacyWithPaymentIntent();
+      if (!result.rows[0]) {
+        throw new Error('No se pudo crear la cita: psicólogo no encontrado');
+      }
       return rowInsertCita(result.rows[0]);
     }
     if (
@@ -160,11 +167,17 @@ export async function insertCitaFromWebhook(params: {
     ) {
       try {
         const result = await insertSinStripe();
+        if (!result.rows[0]) {
+          throw new Error('No se pudo crear la cita: psicólogo no encontrado');
+        }
         return rowInsertCita(result.rows[0]);
       } catch (err2) {
         const msg2 = (err2 as Error).message || '';
         if (msg2.includes('servicio_interes')) {
           const result = await insertLegacySinStripe();
+          if (!result.rows[0]) {
+            throw new Error('No se pudo crear la cita: psicólogo no encontrado');
+          }
           return rowInsertCita(result.rows[0]);
         }
         throw err2;
@@ -646,7 +659,7 @@ export async function crearSesionPago(
         quantity: 1,
       },
     ],
-    success_url: successUrl,
+    success_url: withCheckoutSessionId(successUrl),
     cancel_url: cancelUrl,
     metadata: {
       paciente_id: String(params.pacienteId),
@@ -729,6 +742,24 @@ export async function handleStripeCheckoutCompleted(
   const pacienteIdNum = parseInt(pacienteId, 10);
   const psicologoIdNum = parseInt(psicologoId, 10);
 
+  if (paymentIntentId) {
+    try {
+      const dup = await query<{ id: number }>(
+        'SELECT id FROM citas WHERE stripe_payment_intent_id = $1 LIMIT 1',
+        [paymentIntentId],
+      );
+      if (dup.rows.length > 0) return;
+    } catch (err) {
+      const msg = (err as Error).message || '';
+      if (
+        !msg.includes('stripe_payment_intent_id') &&
+        !msg.includes('does not exist')
+      ) {
+        throw err;
+      }
+    }
+  }
+
   if (pacienteZonaHoraria) {
     await guardarZonaHorariaPaciente(pacienteIdNum, pacienteZonaHoraria);
   }
@@ -744,6 +775,10 @@ export async function handleStripeCheckoutCompleted(
     recomendadoPor,
     servicioInteres,
   });
+
+  if (!inserted.id) {
+    throw new Error('No se pudo crear la cita tras el pago');
+  }
 
   await procesarPrimeraCitaReferido(pacienteIdNum);
 

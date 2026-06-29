@@ -24,6 +24,7 @@ function shouldSkipMiddleware(pathname: string): boolean {
   return (
     pathname.startsWith('/api') ||
     pathname.startsWith('/auth') ||
+    pathname.startsWith('/webhook') ||
     pathname.startsWith('/_next') ||
     pathname === '/logout' ||
     pathname.startsWith('/registrar-usuario') ||
