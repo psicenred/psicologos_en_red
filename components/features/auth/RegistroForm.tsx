@@ -79,7 +79,7 @@ export function RegistroForm() {
 
       if (result.kind === 'success') {
         clearStoredReferralCode();
-        navigateAfterRegistroSuccess(result.redirect);
+        navigateAfterRegistroSuccess(result.redirect, data.email);
         return;
       }
 

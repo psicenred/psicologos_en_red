@@ -93,13 +93,25 @@ export async function parseRegistroPayload(
 }
 
 /** Navegación fiable tras registro (evita fallos silenciosos de router.push). */
-export function navigateAfterRegistroSuccess(redirect: string): void {
+export function navigateAfterRegistroSuccess(redirect: string, email?: string): void {
   if (typeof window === 'undefined') return;
-  const target =
+
+  const path =
     redirect.startsWith('http://') || redirect.startsWith('https://')
       ? redirect
       : redirect.startsWith('/')
         ? redirect
         : `/${redirect}`;
-  window.location.assign(target);
+
+  const url = path.startsWith('http')
+    ? new URL(path)
+    : new URL(path, window.location.origin);
+
+  if (email?.trim()) {
+    url.searchParams.set('email', email.trim().toLowerCase());
+  }
+
+  window.location.assign(
+    path.startsWith('http') ? url.href : `${url.pathname}${url.search}${url.hash}`,
+  );
 }

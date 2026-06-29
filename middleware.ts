@@ -28,7 +28,6 @@ function shouldSkipMiddleware(pathname: string): boolean {
     pathname === '/logout' ||
     pathname.startsWith('/registrar-usuario') ||
     pathname.startsWith('/verificar-email') ||
-    pathname.startsWith('/reenviar-verificacion') ||
     /\.[^/]+$/.test(pathname)
   );
 }

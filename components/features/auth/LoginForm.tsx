@@ -41,6 +41,7 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const formRef = useRef<HTMLFormElement>(null);
   const [error, setError] = useState('');
+  const [unverifiedEmail, setUnverifiedEmail] = useState('');
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -77,6 +78,7 @@ export function LoginForm() {
 
     setSubmitting(true);
     setIsRedirecting(true);
+    setUnverifiedEmail('');
 
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), 30_000);
@@ -104,6 +106,9 @@ export function LoginForm() {
 
       if (!res.ok) {
         setIsRedirecting(false);
+        if (data.error === 'unverified') {
+          setUnverifiedEmail(parsed.data.email.toLowerCase());
+        }
         setError(mapLoginApiError(data.error, t));
         return;
       }
@@ -160,6 +165,16 @@ export function LoginForm() {
         ) : null}
       </div>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {unverifiedEmail ? (
+        <p className="text-center text-sm">
+          <Link
+            href={`/reenviar-verificacion?email=${encodeURIComponent(unverifiedEmail)}`}
+            className="font-medium text-primary underline"
+          >
+            {t('verificationResendLink')}
+          </Link>
+        </p>
+      ) : null}
       <Button type="submit" className="w-full text-base" disabled={loading}>
         {loading ? t('loggingIn') : t('login')}
       </Button>

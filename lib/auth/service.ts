@@ -295,8 +295,56 @@ export async function verifyEmailToken(token: string) {
 }
 
 export async function resendVerificationEmail(email: string) {
+  const result = await requestVerificationResend(email);
+
+  if (!result.ok) {
+    switch (result.code) {
+      case 'missing_email':
+        return { redirect: '/login' as const };
+      case 'not_found':
+        return authMessageBox({
+          variant: 'error',
+          title: '❌ Usuario no encontrado',
+          body: '',
+          actionHtml: '<a href="/login">Ir al login</a>',
+        });
+      case 'already_verified':
+        return authMessageBox({
+          variant: 'success',
+          title: '✅ Tu correo ya está verificado',
+          body: '',
+          actionHtml: `<a href="/login" style="display: inline-block; margin-top: 15px; padding: 12px 30px; background: linear-gradient(135deg, #c9a0dc 0%, #a0c4e8 100%); color: white; text-decoration: none; border-radius: 25px; font-weight: bold;">Iniciar sesión</a>`,
+        });
+      case 'mail_failed':
+        return authMessageBox({
+          variant: 'error',
+          title: '❌ No se pudo enviar el correo',
+          body: 'Intenta de nuevo en unos minutos.',
+          actionHtml: '<a href="/login">Ir al login</a>',
+        });
+    }
+  }
+
+  return authMessageBox({
+    variant: 'success',
+    title: '📧 ¡Correo enviado!',
+    body: `Hemos enviado un nuevo enlace de verificación a <strong>${result.email}</strong>. Revisa tu bandeja de entrada (y spam).`,
+    actionHtml: `<a href="/login" style="display: inline-block; margin-top: 15px; padding: 12px 30px; background: #28a745; color: white; text-decoration: none; border-radius: 25px;">Volver al login</a>`,
+  });
+}
+
+export type VerificationResendResult =
+  | { ok: true; email: string }
+  | {
+      ok: false;
+      code: 'missing_email' | 'not_found' | 'already_verified' | 'mail_failed';
+    };
+
+export async function requestVerificationResend(
+  email: string,
+): Promise<VerificationResendResult> {
   const emailNorm = normalizeEmail(email);
-  if (!emailNorm) return { redirect: '/login' };
+  if (!emailNorm) return { ok: false, code: 'missing_email' };
 
   const result = await query(
     'SELECT id, nombre, email_verificado FROM usuarios WHERE LOWER(email) = $1',
@@ -304,12 +352,7 @@ export async function resendVerificationEmail(email: string) {
   );
 
   if (result.rows.length === 0) {
-    return authMessageBox({
-      variant: 'error',
-      title: '❌ Usuario no encontrado',
-      body: '',
-      actionHtml: '<a href="/login">Ir al login</a>',
-    });
+    return { ok: false, code: 'not_found' };
   }
 
   const usuario = result.rows[0] as {
@@ -319,12 +362,7 @@ export async function resendVerificationEmail(email: string) {
   };
 
   if (usuario.email_verificado) {
-    return authMessageBox({
-      variant: 'success',
-      title: '✅ Tu correo ya está verificado',
-      body: '',
-      actionHtml: `<a href="/login" style="display: inline-block; margin-top: 15px; padding: 12px 30px; background: linear-gradient(135deg, #c9a0dc 0%, #a0c4e8 100%); color: white; text-decoration: none; border-radius: 25px; font-weight: bold;">Iniciar sesión</a>`,
-    });
+    return { ok: false, code: 'already_verified' };
   }
 
   const tokenVerificacion = crypto.randomBytes(32).toString('hex');
@@ -337,10 +375,11 @@ export async function resendVerificationEmail(email: string) {
 
   const enlaceVerificacion = `${getBaseUrl()}/verificar-email?token=${tokenVerificacion}`;
 
-  await sendMail({
-    to: emailNorm,
-    subject: '✅ Verifica tu cuenta - Psicólogos en Red',
-    html: `
+  try {
+    await sendMail({
+      to: emailNorm,
+      subject: '✅ Verifica tu cuenta - Psicólogos en Red',
+      html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
         <h2 style="color: #333;">¡Hola ${usuario.nombre}!</h2>
         <p style="color: #666;">Has solicitado un nuevo enlace de verificación:</p>
@@ -350,14 +389,13 @@ export async function resendVerificationEmail(email: string) {
         <p style="color: #999; font-size: 14px;">Este enlace expira en 24 horas.</p>
       </div>
     `,
-  });
+    });
+  } catch (err) {
+    console.error('[requestVerificationResend] sendMail:', err);
+    return { ok: false, code: 'mail_failed' };
+  }
 
-  return authMessageBox({
-    variant: 'success',
-    title: '📧 ¡Correo enviado!',
-    body: `Hemos enviado un nuevo enlace de verificación a <strong>${emailNorm}</strong>. Revisa tu bandeja de entrada (y spam).`,
-    actionHtml: `<a href="/login" style="display: inline-block; margin-top: 15px; padding: 12px 30px; background: #28a745; color: white; text-decoration: none; border-radius: 25px;">Volver al login</a>`,
-  });
+  return { ok: true, email: emailNorm };
 }
 
 export async function requestPasswordReset(
