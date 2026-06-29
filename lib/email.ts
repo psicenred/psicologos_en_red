@@ -58,9 +58,17 @@ export async function sendMail(opts: SendMailOptions): Promise<void> {
       },
       body: JSON.stringify(body),
     });
-    const data = (await res.json()) as { error?: { message?: string }; message?: string };
+    const data = (await res.json()) as {
+      id?: string;
+      error?: { message?: string };
+      message?: string;
+    };
     if (!res.ok || data.error) {
+      console.error('[email] Resend error:', data);
       throw new Error(data.message || data.error?.message || 'Resend error');
+    }
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[email] Resend ok:', data.id, '→', to);
     }
     return;
   }

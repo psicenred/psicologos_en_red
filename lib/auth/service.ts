@@ -147,9 +147,12 @@ export async function registerUsuario(
 
   const enlaceVerificacion = `${getBaseUrl()}/verificar-email?token=${tokenVerificacion}`;
 
-  void sendVerificationEmail(email, nombre, enlaceVerificacion).catch((err) => {
-    console.error('[verificacion] Error enviando correo:', err);
-  });
+  try {
+    await sendVerificationEmail(email, nombre, enlaceVerificacion);
+  } catch (err) {
+    // No fallar el registro si el correo falla; el usuario puede usar /reenviar-verificacion
+    console.error('[verificacion] Error enviando correo de registro:', err);
+  }
 
   return { redirect: '/registro-exitoso' as const };
 }
