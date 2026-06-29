@@ -17,22 +17,22 @@ export function ensureDb(): boolean {
   return isDatabaseConfigured();
 }
 
+export type RegisterUsuarioError = {
+  code:
+    | 'EMAIL_EXISTS'
+    | 'PHONE_TOO_LONG'
+    | 'FIELD_TOO_LONG'
+    | 'SERVER_ERROR';
+  title: string;
+  body: string;
+  status: number;
+};
+
 export type RegisterUsuarioResult =
   | { redirect: '/registro-exitoso' }
-  | {
-      error: {
-        code:
-          | 'EMAIL_EXISTS'
-          | 'PHONE_TOO_LONG'
-          | 'FIELD_TOO_LONG'
-          | 'SERVER_ERROR';
-        title: string;
-        body: string;
-        status: number;
-      };
-    };
+  | { error: RegisterUsuarioError };
 
-function mapRegisterDbError(err: unknown): RegisterUsuarioResult['error'] | null {
+function mapRegisterDbError(err: unknown): RegisterUsuarioError | null {
   const msg = (err as { message?: string }).message || '';
   if (
     msg.includes('usuarios_email_key') ||
