@@ -1058,9 +1058,21 @@ body.video-pseudo-fullscreen .perfil-video-container {
   background: rgba(0, 0, 0, 0.6);
   z-index: 3000;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 20px;
+  padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
+    max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.perfil-modal-overlay::before,
+.perfil-modal-overlay::after {
+  content: '';
+  flex: 1 0 auto;
+  width: 100%;
+  pointer-events: none;
 }
 
 .perfil-modal {
@@ -1070,6 +1082,7 @@ body.video-pseudo-fullscreen .perfil-video-container {
   width: 90%;
   max-width: 420px;
   position: relative;
+  flex: 0 0 auto;
 }
 
 .perfil-modal h3 {
@@ -1149,7 +1162,7 @@ body.video-pseudo-fullscreen .perfil-video-container {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  z-index: 10;
+  z-index: 30;
   background: #fff;
   border: 1px solid #ddd;
   border-radius: 12px;
@@ -1194,6 +1207,38 @@ body.video-pseudo-fullscreen .perfil-video-container {
 
 .gestion-cita-required {
   color: var(--primario-rosa, #c9a0dc);
+}
+
+.perfil-modal-gestion-cita {
+  max-height: calc(
+    100dvh - max(40px, env(safe-area-inset-top) + env(safe-area-inset-bottom))
+  );
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.perfil-modal-gestion-cita-header {
+  flex-shrink: 0;
+}
+
+.perfil-modal-gestion-cita-header h3 {
+  margin-top: 0;
+}
+
+.perfil-modal-gestion-cita-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.perfil-modal-gestion-cita .perfil-modal-actions {
+  flex-shrink: 0;
+  margin-top: 0;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
 }
 
 .perfil-modal-gestion-cita-wide {

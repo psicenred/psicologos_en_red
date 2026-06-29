@@ -208,13 +208,19 @@ export function AgendarDialog({
         className="perfil-modal perfil-modal-gestion-cita perfil-modal-gestion-cita-wide"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 id="gestion-cita-titulo">
-          {psicologo ? t('bookWith', { name: psicologo.nombre }) : t('book')}
-        </h3>
+        <div className="perfil-modal-gestion-cita-header">
+          <h3 id="gestion-cita-titulo">
+            {psicologo ? t('bookWith', { name: psicologo.nombre }) : t('book')}
+          </h3>
+        </div>
 
         {loggedIn === false ? (
-          <div className="gestion-cita-login">
-            <p>{t('loginRequired')}</p>
+          <>
+            <div className="perfil-modal-gestion-cita-body">
+              <div className="gestion-cita-login">
+                <p>{t('loginRequired')}</p>
+              </div>
+            </div>
             <div className="perfil-modal-actions">
               <Link
                 href={`/login?redirect=${encodeURIComponent('/catalogo')}`}
@@ -237,35 +243,37 @@ export function AgendarDialog({
                 {t('register')}
               </Link>
             </div>
-          </div>
+          </>
         ) : psicologo ? (
           <>
-            <PerfilGestionCitaFields
-              psicologoId={psicologo.id}
-              fecha={fecha}
-              setFecha={setFecha}
-              hora={hora}
-              setHora={setHora}
-            />
+            <div className="perfil-modal-gestion-cita-body">
+              <PerfilGestionCitaFields
+                psicologoId={psicologo.id}
+                fecha={fecha}
+                setFecha={setFecha}
+                hora={hora}
+                setHora={setHora}
+              />
 
-            <AgendarBookingExtraFields
-              psicologo={psicologo}
-              currency={region?.currency ?? ''}
-              regionUnknown={region?.regionUnknown}
-              esPacienteNuevo={esPacienteNuevo}
-              servicioInteres={servicioInteres}
-              onServicioChange={handleServicioChange}
-              motivoConsulta={motivoConsulta}
-              onMotivoChange={setMotivoConsulta}
-              motivoOtro={motivoOtro}
-              onMotivoOtroChange={setMotivoOtro}
-              origenConocimiento={origenConocimiento}
-              onOrigenChange={setOrigenConocimiento}
-              recomendadoPor={recomendadoPor}
-              onRecomendadoChange={setRecomendadoPor}
-            />
+              <AgendarBookingExtraFields
+                psicologo={psicologo}
+                currency={region?.currency ?? ''}
+                regionUnknown={region?.regionUnknown}
+                esPacienteNuevo={esPacienteNuevo}
+                servicioInteres={servicioInteres}
+                onServicioChange={handleServicioChange}
+                motivoConsulta={motivoConsulta}
+                onMotivoChange={setMotivoConsulta}
+                motivoOtro={motivoOtro}
+                onMotivoOtroChange={setMotivoOtro}
+                origenConocimiento={origenConocimiento}
+                onOrigenChange={setOrigenConocimiento}
+                recomendadoPor={recomendadoPor}
+                onRecomendadoChange={setRecomendadoPor}
+              />
 
-            {error ? <p className="gestion-cita-error">{error}</p> : null}
+              {error ? <p className="gestion-cita-error">{error}</p> : null}
+            </div>
 
             <div className="perfil-modal-actions">
               <button

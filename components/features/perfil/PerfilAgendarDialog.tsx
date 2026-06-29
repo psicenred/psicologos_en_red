@@ -141,33 +141,37 @@ export function PerfilAgendarDialog({
         className="perfil-modal perfil-modal-gestion-cita"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 id="gestion-cita-titulo">Agendar cita</h3>
-        {psicologoNombre ? (
-          <p id="gestion-cita-subtitulo" className="perfil-modal-subtitulo">
-            Psicólogo: {psicologoNombre}
-          </p>
-        ) : null}
+        <div className="perfil-modal-gestion-cita-header">
+          <h3 id="gestion-cita-titulo">Agendar cita</h3>
+          {psicologoNombre ? (
+            <p id="gestion-cita-subtitulo" className="perfil-modal-subtitulo">
+              Psicólogo: {psicologoNombre}
+            </p>
+          ) : null}
 
-        <p className="cita-tipo-sesion-label">{formatEtiquetaSesion(servicio)}</p>
-        {precioSesion != null && currency ? (
-          <p className="gestion-cita-precio-sesion">
-            Precio de esta sesión:{' '}
-            <strong>
-              {currency === 'USD' ? 'US$' : '$'}
-              {precioSesion} {currency}
-            </strong>
-          </p>
-        ) : null}
+          <p className="cita-tipo-sesion-label">{formatEtiquetaSesion(servicio)}</p>
+          {precioSesion != null && currency ? (
+            <p className="gestion-cita-precio-sesion">
+              Precio de esta sesión:{' '}
+              <strong>
+                {currency === 'USD' ? 'US$' : '$'}
+                {precioSesion} {currency}
+              </strong>
+            </p>
+          ) : null}
+        </div>
 
-        <PerfilGestionCitaFields
-          psicologoId={psicologoId}
-          fecha={fecha}
-          setFecha={setFecha}
-          hora={hora}
-          setHora={setHora}
-        />
+        <div className="perfil-modal-gestion-cita-body">
+          <PerfilGestionCitaFields
+            psicologoId={psicologoId}
+            fecha={fecha}
+            setFecha={setFecha}
+            hora={hora}
+            setHora={setHora}
+          />
 
-        {error ? <p className="gestion-cita-error">{error}</p> : null}
+          {error ? <p className="gestion-cita-error">{error}</p> : null}
+        </div>
 
         <div className="perfil-modal-actions">
           <button type="button" disabled={loading} onClick={() => onOpenChange(false)}>
