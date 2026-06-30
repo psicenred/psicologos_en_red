@@ -94,6 +94,11 @@ export function PrivateChat({
   const loadMensajes = useCallback(
     async (destId: number) => {
       setMsgError(null);
+      const prevByContact = queryClient.getQueryData<Record<string, number>>([
+        'mensajes-no-leidos-por-contacto',
+      ]);
+      const removed = prevByContact?.[String(destId)] ?? 0;
+
       const result = await loadMensajesAction(destId);
       if (!result.ok) {
         setMsgError(result.error);
@@ -102,7 +107,26 @@ export function PrivateChat({
       }
       setMensajes(result.data.mensajes ?? []);
       setMiId(result.data.miId ?? null);
-      queryClient.invalidateQueries({ queryKey: ['mensajes-no-leidos-por-contacto'] });
+
+      queryClient.setQueryData<Record<string, number>>(
+        ['mensajes-no-leidos-por-contacto'],
+        (prev) => {
+          if (!prev) return prev;
+          const next = { ...prev };
+          delete next[String(destId)];
+          return next;
+        },
+      );
+      if (removed > 0) {
+        queryClient.setQueryData<{ count: number }>(['mensajes-no-leidos'], (prev) => ({
+          count: Math.max(0, (prev?.count ?? 0) - removed),
+        }));
+      }
+
+      void queryClient.invalidateQueries({
+        queryKey: ['mensajes-no-leidos-por-contacto'],
+      });
+      void queryClient.invalidateQueries({ queryKey: ['mensajes-no-leidos'] });
     },
     [queryClient],
   );
