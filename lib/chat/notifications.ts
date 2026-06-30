@@ -1,6 +1,7 @@
 import { getBaseUrl } from '@/lib/config';
 import { query } from '@/lib/db';
 import { sendMail } from '@/lib/email';
+import { enviarWhatsapp } from '@/lib/whatsapp';
 
 const CHAT_NOTIF_EMAIL_INTERVAL_MINUTES = 60;
 
@@ -22,7 +23,9 @@ export async function enviarCorreoNotificacionChatSiAplica(
     }
 
     const [destRow, remRow] = await Promise.all([
-      query('SELECT nombre, email FROM usuarios WHERE id = $1', [destinatarioId]),
+      query('SELECT nombre, email, telefono FROM usuarios WHERE id = $1', [
+        destinatarioId,
+      ]),
       query(
         `SELECT u.nombre AS usuario_nombre, p.nombre AS psicologo_nombre
          FROM usuarios u LEFT JOIN psicologos p ON p.usuario_id = u.id WHERE u.id = $1`,
@@ -30,7 +33,7 @@ export async function enviarCorreoNotificacionChatSiAplica(
       ),
     ]);
     const dest = destRow.rows[0] as
-      | { nombre?: string; email?: string }
+      | { nombre?: string; email?: string; telefono?: string }
       | undefined;
     const rem = remRow.rows[0] as
       | { usuario_nombre?: string; psicologo_nombre?: string }
@@ -65,6 +68,12 @@ export async function enviarCorreoNotificacionChatSiAplica(
         ' está tratando de comunicarse contigo - Psicólogos en Red',
       html,
     });
+
+    await enviarWhatsapp(
+      dest.telefono,
+      `Psicólogos en Red – ${nombreRemitente} te escribió en el chat. Inicia sesión para ver el mensaje: ${enlaceLogin}`,
+    );
+
     await query(
       `INSERT INTO chat_notificacion_email (destinatario_id, remitente_id, enviado_at) VALUES ($1, $2, NOW())
        ON CONFLICT (destinatario_id, remitente_id) DO UPDATE SET enviado_at = NOW()`,

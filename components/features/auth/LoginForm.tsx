@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/features/auth/PasswordInput';
 import { Label } from '@/components/ui/label';
 import { loginSchema } from '@/lib/schemas/auth';
 
@@ -152,10 +153,9 @@ export function LoginForm() {
       </div>
       <div>
         <Label htmlFor="password">{t('password')}</Label>
-        <Input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           autoComplete="current-password"
           className="auth-input text-base"
           disabled={loading}

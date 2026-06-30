@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/features/auth/PasswordInput';
 import { Label } from '@/components/ui/label';
 import { PhoneCountryInput } from '@/components/features/auth/PhoneCountryInput';
 import { DEFAULT_PHONE_COUNTRY_DIAL } from '@/lib/phone/country-codes';
@@ -152,7 +153,7 @@ export function RegistroForm() {
       </div>
       <div>
         <Label htmlFor="password">{t('password')}</Label>
-        <Input id="password" type="password" {...register('password')} />
+        <PasswordInput id="password" autoComplete="new-password" {...register('password')} />
         {errors.password ? (
           <p className="text-xs text-destructive">{errors.password.message}</p>
         ) : null}

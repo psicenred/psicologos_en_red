@@ -248,6 +248,8 @@
   "auth": {
     "email": "Email address",
     "password": "Password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
     "name": "Full name",
     "phone": "Phone",
     "phoneCountryCode": "Country code",

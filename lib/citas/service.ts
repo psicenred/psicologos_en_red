@@ -699,6 +699,46 @@ export async function crearSesionPago(
   return { url: session.url };
 }
 
+/** Evita citas duplicadas cuando webhook Stripe y /api/confirmar-pago-stripe corren a la vez. */
+async function findExistingCitaForCheckout(params: {
+  pacienteId: number;
+  psicologoId: number;
+  fecha: string;
+  hora: string;
+  paymentIntentId: string | null;
+}): Promise<number | null> {
+  const { pacienteId, psicologoId, fecha, hora, paymentIntentId } = params;
+
+  if (paymentIntentId) {
+    try {
+      const byPayment = await query<{ id: number }>(
+        'SELECT id FROM citas WHERE stripe_payment_intent_id = $1 LIMIT 1',
+        [paymentIntentId],
+      );
+      if (byPayment.rows[0]?.id) return byPayment.rows[0].id;
+    } catch (err) {
+      const msg = (err as Error).message || '';
+      if (
+        !msg.includes('stripe_payment_intent_id') &&
+        !msg.includes('does not exist')
+      ) {
+        throw err;
+      }
+    }
+  }
+
+  const bySlot = await query<{ id: number }>(
+    `SELECT id FROM citas
+     WHERE paciente_id = $1 AND psicologo_id = $2
+       AND fecha = $3::date AND hora = $4::time
+       AND estado NOT IN ('cancelada')
+     ORDER BY id DESC
+     LIMIT 1`,
+    [pacienteId, psicologoId, fecha, hora],
+  );
+  return bySlot.rows[0]?.id ?? null;
+}
+
 export async function handleStripeCheckoutCompleted(
   session: Stripe.Checkout.Session,
 ): Promise<void> {
@@ -742,23 +782,14 @@ export async function handleStripeCheckoutCompleted(
   const pacienteIdNum = parseInt(pacienteId, 10);
   const psicologoIdNum = parseInt(psicologoId, 10);
 
-  if (paymentIntentId) {
-    try {
-      const dup = await query<{ id: number }>(
-        'SELECT id FROM citas WHERE stripe_payment_intent_id = $1 LIMIT 1',
-        [paymentIntentId],
-      );
-      if (dup.rows.length > 0) return;
-    } catch (err) {
-      const msg = (err as Error).message || '';
-      if (
-        !msg.includes('stripe_payment_intent_id') &&
-        !msg.includes('does not exist')
-      ) {
-        throw err;
-      }
-    }
-  }
+  const existingId = await findExistingCitaForCheckout({
+    pacienteId: pacienteIdNum,
+    psicologoId: psicologoIdNum,
+    fecha,
+    hora,
+    paymentIntentId,
+  });
+  if (existingId) return;
 
   if (pacienteZonaHoraria) {
     await guardarZonaHorariaPaciente(pacienteIdNum, pacienteZonaHoraria);

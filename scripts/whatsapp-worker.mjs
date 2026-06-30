@@ -23,7 +23,10 @@ import makeWASocket, {
 } from '@whiskeysockets/baileys';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PORT = parseInt(process.env.WHATSAPP_WORKER_PORT || '4055', 10);
+const PORT = parseInt(
+  process.env.PORT || process.env.WHATSAPP_WORKER_PORT || '4055',
+  10,
+);
 const SECRET = process.env.WHATSAPP_WORKER_SECRET || '';
 const AUTH_DIR =
   process.env.WHATSAPP_AUTH_DIR ||
@@ -136,8 +139,8 @@ app.post('/send', authMiddleware, async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`[whatsapp-worker] API en http://127.0.0.1:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`[whatsapp-worker] API en http://0.0.0.0:${PORT}`);
   startBaileys().catch((err) => {
     console.error('[whatsapp-worker] init:', err.message);
     process.exit(1);
