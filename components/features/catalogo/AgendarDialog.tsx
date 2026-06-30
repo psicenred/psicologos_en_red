@@ -253,6 +253,7 @@ export function AgendarDialog({
                 setFecha={setFecha}
                 hora={hora}
                 setHora={setHora}
+                floatingCalendar
               />
 
               <AgendarBookingExtraFields

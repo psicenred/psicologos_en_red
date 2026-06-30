@@ -1157,6 +1157,11 @@ body.video-pseudo-fullscreen .perfil-video-container {
   padding: 8px;
 }
 
+.gestion-cita-calendario-popup-floating {
+  position: fixed;
+  z-index: 10002;
+}
+
 .gestion-mensaje-horarios {
   font-size: 0.8rem;
   margin: 6px 0 0;
