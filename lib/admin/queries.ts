@@ -167,7 +167,7 @@ export async function loadAdminEstadisticas(): Promise<AdminEstadisticas> {
 export async function listAdminCitas() {
   await marcarCitasNoRealizadas();
   const result = await query(`
-    SELECT c.id, c.fecha, c.hora, c.estado,
+    SELECT c.id, TO_CHAR(c.fecha, 'YYYY-MM-DD') AS fecha, c.hora, c.estado,
            pac.nombre as paciente_nombre, pac.email as paciente_email,
            psi.nombre as psicologo_nombre
     FROM citas c

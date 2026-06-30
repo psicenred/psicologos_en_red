@@ -8,9 +8,30 @@ export function estadoBadgeClass(estado: string): string {
   return 'badge-pendiente';
 }
 
-export function formatFecha(fecha: string | null | undefined): string {
-  if (!fecha) return '—';
-  return String(fecha).slice(0, 10);
+export function formatFecha(fecha: string | Date | null | undefined): string {
+  if (fecha == null || fecha === '') return '—';
+
+  if (fecha instanceof Date) {
+    if (Number.isNaN(fecha.getTime())) return '—';
+    const y = fecha.getUTCFullYear();
+    const m = String(fecha.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(fecha.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  const s = String(fecha).trim();
+  const isoDate = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (isoDate) return isoDate[1];
+
+  const parsed = new Date(s);
+  if (!Number.isNaN(parsed.getTime())) {
+    const y = parsed.getUTCFullYear();
+    const m = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(parsed.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  return s.slice(0, 10);
 }
 
 export function formatHora(hora: string | null | undefined): string {
