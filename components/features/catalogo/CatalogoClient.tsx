@@ -206,7 +206,7 @@ function PsicoCard({
               t('selectRegionForPrices')
             ) : (
               <>
-                {t('fromPrice')} ${precioDesde}{' '}
+                {t('fromPrice')}{precioDesde}{' '}
                 <small>
                   {currency} {t('perSession')}
                 </small>
