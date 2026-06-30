@@ -87,7 +87,7 @@ export function formatCitaHora(
 
 export function esCitaFutura(cita: CitaDoctor, ahora = new Date()): boolean {
   const estado = (cita.estado || '').toLowerCase();
-  if (['cancelada', 'realizada', 'no realizada'].includes(estado)) return false;
+  if (estado === 'cancelada' || estado === 'no realizada') return false;
   return esCitaActiva(getCitaDateTime(cita), ahora);
 }
 

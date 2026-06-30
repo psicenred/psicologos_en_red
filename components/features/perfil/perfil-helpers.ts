@@ -51,7 +51,7 @@ export function estadoClass(estado: string): string {
 
 export function esCitaFutura(cita: CitaPaciente, ahora = new Date()): boolean {
   const estado = (cita.estado || '').toLowerCase();
-  if (['cancelada', 'realizada', 'no realizada'].includes(estado)) return false;
+  if (estado === 'cancelada' || estado === 'no realizada') return false;
   return esCitaActiva(getCitaDateTime(cita), ahora);
 }
 

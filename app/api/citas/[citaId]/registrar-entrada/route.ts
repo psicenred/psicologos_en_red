@@ -48,20 +48,7 @@ export async function POST(
           { status: 404 },
         );
       }
-      const row = r.rows[0] as {
-        paciente_entro_at?: Date;
-        psicologo_entro_at?: Date;
-      };
-      if (row.paciente_entro_at && row.psicologo_entro_at) {
-        await query(`UPDATE citas SET estado = 'realizada' WHERE id = $1`, [
-          citaId,
-        ]);
-      }
-      return NextResponse.json({
-        success: true,
-        estado:
-          row.paciente_entro_at && row.psicologo_entro_at ? 'realizada' : null,
-      });
+      return NextResponse.json({ success: true });
     }
 
     const r = await query(
@@ -77,20 +64,7 @@ export async function POST(
         { status: 404 },
       );
     }
-    const row = r.rows[0] as {
-      paciente_entro_at?: Date;
-      psicologo_entro_at?: Date;
-    };
-    if (row.paciente_entro_at && row.psicologo_entro_at) {
-      await query(`UPDATE citas SET estado = 'realizada' WHERE id = $1`, [
-        citaId,
-      ]);
-    }
-    return NextResponse.json({
-      success: true,
-      estado:
-        row.paciente_entro_at && row.psicologo_entro_at ? 'realizada' : null,
-    });
+    return NextResponse.json({ success: true });
   } catch (err) {
     const code = (err as { code?: string }).code;
     if (code === '42703') {
