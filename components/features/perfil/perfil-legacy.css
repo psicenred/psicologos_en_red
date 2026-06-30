@@ -1200,32 +1200,9 @@ body.video-pseudo-fullscreen .perfil-video-container {
   max-width: 520px;
 }
 
-/* Scroll solo en popup largo del catálogo (primera cita), no en perfil */
-.catalogo-agendar-overlay {
-  flex-direction: column;
-  padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
-    max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-}
-
-.catalogo-agendar-overlay::before,
-.catalogo-agendar-overlay::after {
-  content: '';
-  flex: 1 0 auto;
-  width: 100%;
-  pointer-events: none;
-}
-
-.catalogo-agendar-overlay .perfil-modal {
-  flex: 0 0 auto;
-}
-
+/* Scroll solo en catálogo cuando el popup supera 650px de alto */
 .catalogo-agendar-overlay .perfil-modal-gestion-cita {
-  max-height: calc(
-    100dvh - max(40px, env(safe-area-inset-top) + env(safe-area-inset-bottom))
-  );
+  max-height: min(650px, calc(100dvh - 40px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1251,7 +1228,6 @@ body.video-pseudo-fullscreen .perfil-video-container {
   flex-shrink: 0;
   margin-top: 0;
   padding-top: 16px;
-  border-top: 1px solid #eee;
 }
 
 .gestion-cita-error {
