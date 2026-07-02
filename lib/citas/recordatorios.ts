@@ -153,7 +153,7 @@ export async function ejecutarRecordatoriosPostCita(): Promise<{
       const usuario = userRow.rows[0] as
         | { nombre?: string; email?: string; telefono?: string | null }
         | undefined;
-      if (!usuario?.email) continue;
+      if (!usuario?.email && !usuario?.telefono) continue;
 
       const nombre = (usuario.nombre || '').trim() || 'querido paciente';
       const primerNombre = nombre.split(' ')[0] || nombre;
@@ -187,16 +187,18 @@ export async function ejecutarRecordatoriosPostCita(): Promise<{
 
       if (diasDesde >= 15 && !flags.enviado_dia_15_at) {
         try {
-          await sendMail({
-            to: usuario.email!,
-            bcc: 'contacto@psicologosenred.com',
-            subject: `¿Cómo te has sentido estos últimos días, ${primerNombre}?`,
-            html: htmlRecordatorioPostCitaDia15({
-              nombre,
-              primerNombre,
-              enlaceLogin,
-            }),
-          });
+          if (usuario.email) {
+            await sendMail({
+              to: usuario.email,
+              bcc: 'contacto@psicologosenred.com',
+              subject: `¿Cómo te has sentido estos últimos días, ${primerNombre}?`,
+              html: htmlRecordatorioPostCitaDia15({
+                nombre,
+                primerNombre,
+                enlaceLogin,
+              }),
+            });
+          }
           await enviarWhatsapp(
             usuario.telefono,
             `Psicólogos en Red – Han pasado un par de semanas desde tu última sesión, ${primerNombre}. Agenda aquí: ${enlaceLogin}`,
@@ -213,12 +215,14 @@ export async function ejecutarRecordatoriosPostCita(): Promise<{
 
       if (diasDesde >= 30 && !flags.enviado_dia_30_at) {
         try {
-          await sendMail({
-            to: usuario.email!,
-            bcc: 'contacto@psicologosenred.com',
-            subject: 'Un mes de tu última sesión: Reconecta con tus metas',
-            html: htmlRecordatorioPostCitaDia30({ nombre, enlaceLogin }),
-          });
+          if (usuario.email) {
+            await sendMail({
+              to: usuario.email,
+              bcc: 'contacto@psicologosenred.com',
+              subject: 'Un mes de tu última sesión: Reconecta con tus metas',
+              html: htmlRecordatorioPostCitaDia30({ nombre, enlaceLogin }),
+            });
+          }
           await enviarWhatsapp(
             usuario.telefono,
             `Psicólogos en Red – ${primerNombre}, hace un mes de tu última sesión. Reconecta aquí: ${enlaceLogin}`,
@@ -235,16 +239,18 @@ export async function ejecutarRecordatoriosPostCita(): Promise<{
 
       if (diasDesde >= 60 && !flags.enviado_dia_60_at) {
         try {
-          await sendMail({
-            to: usuario.email!,
-            bcc: 'contacto@psicologosenred.com',
-            subject: `${primerNombre}, queremos apoyarte a retomar tu bienestar`,
-            html: htmlRecordatorioPostCitaDia60({
-              nombre,
-              primerNombre,
-              enlaceLogin,
-            }),
-          });
+          if (usuario.email) {
+            await sendMail({
+              to: usuario.email,
+              bcc: 'contacto@psicologosenred.com',
+              subject: `${primerNombre}, queremos apoyarte a retomar tu bienestar`,
+              html: htmlRecordatorioPostCitaDia60({
+                nombre,
+                primerNombre,
+                enlaceLogin,
+              }),
+            });
+          }
           await enviarWhatsapp(
             usuario.telefono,
             `Psicólogos en Red – ${primerNombre}, han pasado 60 días desde tu última sesión. Te apoyamos aquí: ${enlaceLogin}`,

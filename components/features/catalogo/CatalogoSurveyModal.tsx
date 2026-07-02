@@ -10,14 +10,18 @@ type SurveyOption = { text: string; value: string };
 export function CatalogoSurveyModal({
   open,
   onClose,
+  onCorrienteResult,
 }: {
   open: boolean;
   onClose: () => void;
+  /** Si se pasa (catálogo), aplica el filtro sin recargar la página. */
+  onCorrienteResult?: (corriente: string) => void;
 }) {
   const t = useTranslations('home.modal');
   const [step, setStep] = useState<'survey' | 'result'>('survey');
   const [surveyStep, setSurveyStep] = useState(1);
   const [catalogHref, setCatalogHref] = useState('/catalogo');
+  const [resultCorriente, setResultCorriente] = useState<string | null>(null);
 
   const questions = useMemo(
     () =>
@@ -35,6 +39,7 @@ export function CatalogoSurveyModal({
     setStep('survey');
     setSurveyStep(1);
     setCatalogHref('/catalogo');
+    setResultCorriente(null);
   }
 
   function close() {
@@ -85,8 +90,16 @@ export function CatalogoSurveyModal({
       winners.length === 1
         ? winners[0]
         : winners[Math.floor(Math.random() * winners.length)];
+    setResultCorriente(winner);
     setCatalogHref(`/catalogo?corriente=${encodeURIComponent(winner)}`);
     setStep('result');
+  }
+
+  function handleResultCta() {
+    if (resultCorriente && onCorrienteResult) {
+      onCorrienteResult(resultCorriente);
+    }
+    close();
   }
 
   if (!open) return null;
@@ -149,13 +162,23 @@ export function CatalogoSurveyModal({
               {t('resultTitle')}
             </h2>
             <p className="modal-bienvenida-mensaje">{t('resultMessage')}</p>
-            <Link
-              href={catalogHref}
-              className="modal-bienvenida-btn modal-bienvenida-btn-cta"
-              onClick={close}
-            >
-              {t('resultCta')}
-            </Link>
+            {onCorrienteResult ? (
+              <button
+                type="button"
+                className="modal-bienvenida-btn modal-bienvenida-btn-cta"
+                onClick={handleResultCta}
+              >
+                {t('resultCta')}
+              </button>
+            ) : (
+              <Link
+                href={catalogHref}
+                className="modal-bienvenida-btn modal-bienvenida-btn-cta"
+                onClick={close}
+              >
+                {t('resultCta')}
+              </Link>
+            )}
           </div>
         ) : null}
       </div>

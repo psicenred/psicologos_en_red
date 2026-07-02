@@ -38,7 +38,7 @@ export async function enviarCorreoNotificacionChatSiAplica(
     const rem = remRow.rows[0] as
       | { usuario_nombre?: string; psicologo_nombre?: string }
       | undefined;
-    if (!dest?.email) return;
+    if (!dest?.email && !dest?.telefono) return;
     const nombreRemitente = (
       rem?.psicologo_nombre ||
       rem?.usuario_nombre ||
@@ -59,15 +59,17 @@ export async function enviarCorreoNotificacionChatSiAplica(
             <p style="color: #999; font-size: 12px; text-align: center;">© ${new Date().getFullYear()} Psicólogos en Red.</p>
         </div>`;
 
-    await sendMail({
-      to: dest.email,
-      bcc: 'contacto@psicologosenred.com',
-      subject:
-        '💬 ' +
-        nombreRemitente +
-        ' está tratando de comunicarse contigo - Psicólogos en Red',
-      html,
-    });
+    if (dest.email) {
+      await sendMail({
+        to: dest.email,
+        bcc: 'contacto@psicologosenred.com',
+        subject:
+          '💬 ' +
+          nombreRemitente +
+          ' está tratando de comunicarse contigo - Psicólogos en Red',
+        html,
+      });
+    }
 
     await enviarWhatsapp(
       dest.telefono,

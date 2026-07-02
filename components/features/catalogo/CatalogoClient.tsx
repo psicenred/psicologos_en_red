@@ -48,22 +48,26 @@ function norm(s: string) {
     .replace(/[\u0300-\u036f]/g, '');
 }
 
+function psicologoMatchesCorriente(especialidad: string, corriente: string): boolean {
+  const n = norm(especialidad);
+  const nCorriente = corriente.trim();
+  if (!nCorriente || !n) return false;
+  if (nCorriente === 'TCC') {
+    return n.includes('cognitivo') || n.includes('conductual') || n.includes('tcc');
+  }
+  if (nCorriente === 'Psicoanalisis') {
+    return n.includes('psicoanalisis') || n.includes('psicodinamica');
+  }
+  if (nCorriente === 'Sistemica') return n.includes('sistemica');
+  if (nCorriente === 'Humanista') return n.includes('humanista');
+  return false;
+}
+
 function matchCorriente(corriente: string, especialidades: string[]) {
   const nCorriente = corriente.trim();
   if (!nCorriente) return '';
   return (
-    especialidades.find((e) => {
-      const n = norm(e);
-      if (nCorriente === 'TCC') {
-        return n.includes('cognitivo') || n.includes('conductual') || n.includes('tcc');
-      }
-      if (nCorriente === 'Psicoanalisis') {
-        return n.includes('psicoanalisis') || n.includes('psicodinamica');
-      }
-      if (nCorriente === 'Sistemica') return n.includes('sistemica');
-      if (nCorriente === 'Humanista') return n.includes('humanista');
-      return false;
-    }) || ''
+    especialidades.find((e) => psicologoMatchesCorriente(e, nCorriente)) || ''
   );
 }
 
@@ -241,7 +245,7 @@ export function CatalogoClient() {
   const [surveyOpen, setSurveyOpen] = useState(false);
   const [profileId, setProfileId] = useState<number | null>(null);
   const [agendarTarget, setAgendarTarget] = useState<Psicologo | null>(null);
-  const [urlApplied, setUrlApplied] = useState(false);
+  const [corrienteActiva, setCorrienteActiva] = useState('');
 
   const closeProfile = useCallback(() => {
     setProfileId(null);
@@ -308,14 +312,40 @@ export function CatalogoClient() {
     return () => document.removeEventListener('mousedown', onDocClick);
   }, []);
 
+  const applyCorrienteFilter = useCallback(
+    (corriente: string) => {
+      const key = corriente.trim();
+      if (!key) return;
+      const especialidades = [
+        ...new Set(list.map((p) => (p.especialidad || '').trim()).filter(Boolean)),
+      ];
+      const match = matchCorriente(key, especialidades);
+      setCorrienteActiva(key);
+      setEspecialidad(match);
+      setProblemasSel([]);
+      setServiciosSel([]);
+      setOpenDropdown(null);
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('corriente', key);
+        url.searchParams.delete('servicio');
+        window.history.replaceState({}, '', `${url.pathname}${url.search}`);
+      }
+    },
+    [list],
+  );
+
   useEffect(() => {
-    if (urlApplied || list.length === 0) return;
+    if (list.length === 0) return;
 
     const corriente = (searchParams.get('corriente') || '').trim();
     if (corriente) {
-      const especialidades = [...new Set(list.map((p) => (p.especialidad || '').trim()).filter(Boolean))];
+      const especialidades = [
+        ...new Set(list.map((p) => (p.especialidad || '').trim()).filter(Boolean)),
+      ];
       const match = matchCorriente(corriente, especialidades);
-      if (match) setEspecialidad(match);
+      setCorrienteActiva(corriente);
+      setEspecialidad(match);
     }
 
     const servicioParam = (searchParams.get('servicio') || '').trim();
@@ -335,9 +365,7 @@ export function CatalogoClient() {
       const id = parseInt(verId, 10);
       if (!Number.isNaN(id)) setProfileId(id);
     }
-
-    setUrlApplied(true);
-  }, [list, searchParams, urlApplied]);
+  }, [list, searchParams]);
 
   useEffect(() => {
     if (searchParams.get('pago') === 'exito') {
@@ -367,18 +395,37 @@ export function CatalogoClient() {
     return list.filter((p) => {
       const probs = asStringArray(p.problemas_principales);
       const servs = asStringArray(p.servicios);
-      if (especialidad && (p.especialidad || '').trim() !== especialidad) return false;
+      if (
+        corrienteActiva &&
+        !psicologoMatchesCorriente((p.especialidad || '').trim(), corrienteActiva)
+      ) {
+        return false;
+      }
+      if (
+        !corrienteActiva &&
+        especialidad &&
+        (p.especialidad || '').trim() !== especialidad
+      ) {
+        return false;
+      }
       if (problemasSel.length && !problemasSel.some((x) => probs.includes(x))) return false;
       if (serviciosSel.length && !serviciosSel.some((x) => servs.includes(x))) return false;
       return true;
     });
-  }, [list, especialidad, problemasSel, serviciosSel]);
+  }, [list, corrienteActiva, especialidad, problemasSel, serviciosSel]);
 
   function limpiarFiltros() {
+    setCorrienteActiva('');
     setEspecialidad('');
     setProblemasSel([]);
     setServiciosSel([]);
     setOpenDropdown(null);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('corriente');
+      url.searchParams.delete('servicio');
+      window.history.replaceState({}, '', `${url.pathname}${url.search}`);
+    }
   }
 
   async function selectRegion(inMexico: boolean) {
@@ -446,8 +493,14 @@ export function CatalogoClient() {
                   name="filtro-especialidad"
                   checked={!especialidad}
                   onChange={() => {
+                    setCorrienteActiva('');
                     setEspecialidad('');
                     setOpenDropdown(null);
+                    if (typeof window !== 'undefined') {
+                      const url = new URL(window.location.href);
+                      url.searchParams.delete('corriente');
+                      window.history.replaceState({}, '', `${url.pathname}${url.search}`);
+                    }
                   }}
                 />
                 <span className="filtro-opcion-texto">{t('allSpecialties')}</span>
@@ -459,8 +512,14 @@ export function CatalogoClient() {
                     name="filtro-especialidad"
                     checked={especialidad === esp}
                     onChange={() => {
+                      setCorrienteActiva('');
                       setEspecialidad(esp);
                       setOpenDropdown(null);
+                      if (typeof window !== 'undefined') {
+                        const url = new URL(window.location.href);
+                        url.searchParams.delete('corriente');
+                        window.history.replaceState({}, '', `${url.pathname}${url.search}`);
+                      }
                     }}
                   />
                   <span className="filtro-opcion-texto">{esp}</span>
@@ -529,7 +588,12 @@ export function CatalogoClient() {
                 type="button"
                 className="btn-limpiar"
                 onClick={limpiarFiltros}
-                disabled={!especialidad && !problemasSel.length && !serviciosSel.length}
+                disabled={
+                  !corrienteActiva &&
+                  !especialidad &&
+                  !problemasSel.length &&
+                  !serviciosSel.length
+                }
               >
                 {t('clearFilters')}
               </button>
@@ -610,7 +674,11 @@ export function CatalogoClient() {
         ) : null}
       </section>
 
-      <CatalogoSurveyModal open={surveyOpen} onClose={() => setSurveyOpen(false)} />
+      <CatalogoSurveyModal
+        open={surveyOpen}
+        onClose={() => setSurveyOpen(false)}
+        onCorrienteResult={applyCorrienteFilter}
+      />
 
       {profileId !== null ? (
         <PerfilPsicologoModal

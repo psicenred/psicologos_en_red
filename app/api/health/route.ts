@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { isDatabaseConfigured, query } from '@/lib/db';
 import { getBaseUrl, getBaseUrlSource } from '@/lib/config';
-import { isBaileysWorkerConfigured } from '@/lib/whatsapp/providers/baileys-api';
+import { isBaileysWorkerConfigured, getBaileysWorkerStatus } from '@/lib/whatsapp/providers/baileys-api';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 function isDetailedHealthAuthorized(request: Request): boolean {
@@ -66,6 +66,9 @@ export async function GET(request: Request) {
   }
 
   const dbInfo = parseDatabaseUrlInfo();
+  const whatsappStatus = isBaileysWorkerConfigured()
+    ? await getBaileysWorkerStatus()
+    : null;
   const body = {
     status: ok ? 'ok' : 'degraded',
     checks: {
@@ -85,6 +88,7 @@ export async function GET(request: Request) {
       cron: Boolean(process.env.CRON_SECRET?.trim()),
       whatsappProvider: process.env.WHATSAPP_PROVIDER?.trim() || 'auto',
       whatsappWorker: isBaileysWorkerConfigured(),
+      whatsappConnected: whatsappStatus?.connected ?? false,
       publicBaseUrl: getBaseUrl(),
       publicBaseUrlSource: getBaseUrlSource(),
     },

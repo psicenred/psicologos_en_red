@@ -15,7 +15,12 @@ import { generarIcsCita } from '@/lib/citas/ics';
 import {
   obtenerContextoCitaNotificacion,
   type ContextoCitaNotificacion,
+  type PersonaCita,
 } from '@/lib/citas/participants';
+
+function tieneContacto(persona: PersonaCita): boolean {
+  return Boolean(persona.email?.trim() || persona.telefono?.trim());
+}
 import type { CitaFormateada } from '@/lib/citas/timezone';
 
 const BCC = 'contacto@psicologosenred.com';
@@ -68,12 +73,12 @@ export async function enviarCorreosCitaAgendada(
     fecha_hora_utc,
   });
 
-  if (!ctx?.paciente.email || !ctx.psicologo.email) {
-    console.warn('enviarCorreosCitaAgendada: falta email', {
+  if (!ctx) return;
+  if (!tieneContacto(ctx.paciente) || !tieneContacto(ctx.psicologo)) {
+    console.warn('enviarCorreosCitaAgendada: falta email o teléfono', {
       pacienteId,
       psicologoId,
     });
-    return;
   }
 
   const enlaceLogin = getBaseUrl() + '/login';
@@ -91,36 +96,40 @@ export async function enviarCorreosCitaAgendada(
   const detPaciente = detalle(ctx.paraPaciente);
   const detPsicologo = detalle(ctx.paraPsicologo);
 
-  try {
-    await sendMail({
-      to: ctx.paciente.email,
-      bcc: BCC,
-      subject: '✅ Cita agendada - Psicólogos en Red',
-      html: htmlCitaAgendadaPaciente({
-        primerNombre,
-        detalle: detPaciente,
-        psicologoNombre,
-        enlaceLogin,
-      }),
-      attachments: [ics],
-    });
-  } catch (e) {
-    console.error('Error correo cita paciente:', (e as Error).message);
+  if (ctx.paciente.email) {
+    try {
+      await sendMail({
+        to: ctx.paciente.email,
+        bcc: BCC,
+        subject: '✅ Cita agendada - Psicólogos en Red',
+        html: htmlCitaAgendadaPaciente({
+          primerNombre,
+          detalle: detPaciente,
+          psicologoNombre,
+          enlaceLogin,
+        }),
+        attachments: [ics],
+      });
+    } catch (e) {
+      console.error('Error correo cita paciente:', (e as Error).message);
+    }
   }
-  try {
-    await sendMail({
-      to: ctx.psicologo.email,
-      bcc: BCC,
-      subject: '📅 Nueva cita agendada - Psicólogos en Red',
-      html: htmlCitaAgendadaPsicologo({
-        detalle: detPsicologo,
-        pacienteNombre,
-        enlaceLogin,
-      }),
-      attachments: [ics],
-    });
-  } catch (e) {
-    console.error('Error correo cita psicólogo:', (e as Error).message);
+  if (ctx.psicologo.email) {
+    try {
+      await sendMail({
+        to: ctx.psicologo.email,
+        bcc: BCC,
+        subject: '📅 Nueva cita agendada - Psicólogos en Red',
+        html: htmlCitaAgendadaPsicologo({
+          detalle: detPsicologo,
+          pacienteNombre,
+          enlaceLogin,
+        }),
+        attachments: [ics],
+      });
+    } catch (e) {
+      console.error('Error correo cita psicólogo:', (e as Error).message);
+    }
   }
 
   await enviarWhatsapp(
@@ -149,7 +158,7 @@ export async function enviarCorreosCitaReagendada(
     citaId,
     fecha_hora_utc,
   });
-  if (!ctx?.paciente.email || !ctx.psicologo.email) return;
+  if (!ctx) return;
 
   const enlaceLogin = getBaseUrl() + '/login';
   const psicologoNombre = ctx.psicologo.nombre || 'Tu psicólogo';
@@ -164,35 +173,39 @@ export async function enviarCorreosCitaReagendada(
     accion: 'crear',
   });
 
-  try {
-    await sendMail({
-      to: ctx.paciente.email,
-      bcc: BCC,
-      subject: '📅 Cita reagendada - Psicólogos en Red',
-      html: htmlCitaReagendadaPaciente({
-        detalle: detPaciente,
-        psicologoNombre,
-        enlaceLogin,
-      }),
-      attachments: [ics],
-    });
-  } catch (e) {
-    console.error('Error correo reagendo paciente:', (e as Error).message);
+  if (ctx.paciente.email) {
+    try {
+      await sendMail({
+        to: ctx.paciente.email,
+        bcc: BCC,
+        subject: '📅 Cita reagendada - Psicólogos en Red',
+        html: htmlCitaReagendadaPaciente({
+          detalle: detPaciente,
+          psicologoNombre,
+          enlaceLogin,
+        }),
+        attachments: [ics],
+      });
+    } catch (e) {
+      console.error('Error correo reagendo paciente:', (e as Error).message);
+    }
   }
-  try {
-    await sendMail({
-      to: ctx.psicologo.email,
-      bcc: BCC,
-      subject: '📅 Cita reagendada - Psicólogos en Red',
-      html: htmlCitaReagendadaPsicologo({
-        detalle: detPsicologo,
-        pacienteNombre,
-        enlaceLogin,
-      }),
-      attachments: [ics],
-    });
-  } catch (e) {
-    console.error('Error correo reagendo psicólogo:', (e as Error).message);
+  if (ctx.psicologo.email) {
+    try {
+      await sendMail({
+        to: ctx.psicologo.email,
+        bcc: BCC,
+        subject: '📅 Cita reagendada - Psicólogos en Red',
+        html: htmlCitaReagendadaPsicologo({
+          detalle: detPsicologo,
+          pacienteNombre,
+          enlaceLogin,
+        }),
+        attachments: [ics],
+      });
+    } catch (e) {
+      console.error('Error correo reagendo psicólogo:', (e as Error).message);
+    }
   }
 
   await enviarWhatsapp(
@@ -221,7 +234,7 @@ export async function enviarCorreosCitaCancelada(
     citaId,
     fecha_hora_utc,
   });
-  if (!ctx?.paciente.email || !ctx.psicologo.email) return;
+  if (!ctx) return;
 
   const enlaceLogin = getBaseUrl() + '/login';
   const enlaceCatalogo = getBaseUrl() + '/catalogo';
@@ -236,35 +249,39 @@ export async function enviarCorreosCitaCancelada(
     accion: 'cancelar',
   });
 
-  try {
-    await sendMail({
-      to: ctx.psicologo.email,
-      bcc: BCC,
-      subject: '❌ Cita cancelada - Psicólogos en Red',
-      html: htmlCitaCanceladaPsicologo({
-        detalle: detPsicologo,
-        pacienteNombre,
-        enlaceLogin,
-      }),
-      attachments: [ics],
-    });
-  } catch (e) {
-    console.error('Error correo cancelación psicólogo:', (e as Error).message);
+  if (ctx.psicologo.email) {
+    try {
+      await sendMail({
+        to: ctx.psicologo.email,
+        bcc: BCC,
+        subject: '❌ Cita cancelada - Psicólogos en Red',
+        html: htmlCitaCanceladaPsicologo({
+          detalle: detPsicologo,
+          pacienteNombre,
+          enlaceLogin,
+        }),
+        attachments: [ics],
+      });
+    } catch (e) {
+      console.error('Error correo cancelación psicólogo:', (e as Error).message);
+    }
   }
-  try {
-    await sendMail({
-      to: ctx.paciente.email,
-      bcc: BCC,
-      subject: 'Cita cancelada - Psicólogos en Red',
-      html: htmlCitaCanceladaPaciente({
-        detalle: detPaciente,
-        psicologoNombre,
-        enlaceCatalogo,
-      }),
-      attachments: [ics],
-    });
-  } catch (e) {
-    console.error('Error correo cancelación paciente:', (e as Error).message);
+  if (ctx.paciente.email) {
+    try {
+      await sendMail({
+        to: ctx.paciente.email,
+        bcc: BCC,
+        subject: 'Cita cancelada - Psicólogos en Red',
+        html: htmlCitaCanceladaPaciente({
+          detalle: detPaciente,
+          psicologoNombre,
+          enlaceCatalogo,
+        }),
+        attachments: [ics],
+      });
+    } catch (e) {
+      console.error('Error correo cancelación paciente:', (e as Error).message);
+    }
   }
 
   await enviarWhatsapp(
@@ -291,7 +308,7 @@ export async function enviarCorreosRecordatorioCita(
     hora,
     fecha_hora_utc,
   });
-  if (!ctx?.paciente.email || !ctx.psicologo.email) return;
+  if (!ctx) return;
 
   const enlaceLogin = getBaseUrl() + '/login';
   const primerNombre = (ctx.paciente.nombre || '').split(' ')[0] || 'Paciente';
@@ -300,34 +317,38 @@ export async function enviarCorreosRecordatorioCita(
   const detPaciente = detalle(ctx.paraPaciente);
   const detPsicologo = detalle(ctx.paraPsicologo);
 
-  try {
-    await sendMail({
-      to: ctx.paciente.email,
-      bcc: BCC,
-      subject: '⏰ Recordatorio: tu sesión es en 30 min - Psicólogos en Red',
-      html: htmlRecordatorioPaciente({
-        primerNombre,
-        psicologoNombre,
-        detalle: detPaciente,
-        enlaceLogin,
-      }),
-    });
-  } catch (e) {
-    console.error('Error correo recordatorio paciente:', (e as Error).message);
+  if (ctx.paciente.email) {
+    try {
+      await sendMail({
+        to: ctx.paciente.email,
+        bcc: BCC,
+        subject: '⏰ Recordatorio: tu sesión es en 30 min - Psicólogos en Red',
+        html: htmlRecordatorioPaciente({
+          primerNombre,
+          psicologoNombre,
+          detalle: detPaciente,
+          enlaceLogin,
+        }),
+      });
+    } catch (e) {
+      console.error('Error correo recordatorio paciente:', (e as Error).message);
+    }
   }
-  try {
-    await sendMail({
-      to: ctx.psicologo.email,
-      bcc: BCC,
-      subject: '⏰ Recordatorio: sesión en 30 min - Psicólogos en Red',
-      html: htmlRecordatorioPsicologo({
-        pacienteNombre,
-        detalle: detPsicologo,
-        enlaceLogin,
-      }),
-    });
-  } catch (e) {
-    console.error('Error correo recordatorio psicólogo:', (e as Error).message);
+  if (ctx.psicologo.email) {
+    try {
+      await sendMail({
+        to: ctx.psicologo.email,
+        bcc: BCC,
+        subject: '⏰ Recordatorio: sesión en 30 min - Psicólogos en Red',
+        html: htmlRecordatorioPsicologo({
+          pacienteNombre,
+          detalle: detPsicologo,
+          enlaceLogin,
+        }),
+      });
+    } catch (e) {
+      console.error('Error correo recordatorio psicólogo:', (e as Error).message);
+    }
   }
 
   await enviarWhatsapp(
