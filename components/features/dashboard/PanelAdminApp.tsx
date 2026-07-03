@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { AdminContabilidadSection } from '@/components/features/admin/AdminContabilidadSection';
 import { AdminShell } from '@/components/features/admin/AdminShell';
 import {
   AdminBlogSection,
@@ -25,6 +26,7 @@ export function PanelAdminApp({
       {section === 'citas' && <AdminCitasSection initialData={initialData} />}
       {section === 'psicologos' && <AdminPsicologosSection initialData={initialData} />}
       {section === 'pacientes' && <AdminPacientesSection initialData={initialData} />}
+      {section === 'contabilidad' && <AdminContabilidadSection />}
       {section === 'blog' && <AdminBlogSection initialData={initialData} />}
       {section === 'configuracion' && <AdminConfigSection initialData={initialData} />}
     </AdminShell>

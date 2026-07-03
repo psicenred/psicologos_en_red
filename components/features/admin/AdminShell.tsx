@@ -12,6 +12,7 @@ export const ADMIN_SECTION_TITLES: Record<string, string> = {
   citas: 'Gestión de Citas',
   psicologos: 'Psicólogos',
   pacientes: 'Pacientes',
+  contabilidad: 'Contabilidad',
   blog: 'Gestor de Blog',
   configuracion: 'Configuración',
 };
@@ -21,6 +22,7 @@ const NAV = [
   { id: 'citas', label: 'Citas', icon: '📅' },
   { id: 'psicologos', label: 'Psicólogos', icon: '👨‍⚕️' },
   { id: 'pacientes', label: 'Pacientes', icon: '👥' },
+  { id: 'contabilidad', label: 'Contabilidad', icon: '💰' },
   { id: 'blog', label: 'Blog', icon: '📝' },
   { id: 'configuracion', label: 'Configuración', icon: '⚙️' },
 ];

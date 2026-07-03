@@ -811,6 +811,12 @@ export async function handleStripeCheckoutCompleted(
     throw new Error('No se pudo crear la cita tras el pago');
   }
 
+  try {
+    await query(`UPDATE citas SET fecha_pago = NOW() WHERE id = $1`, [inserted.id]);
+  } catch {
+    /* columna opcional si migración pendiente */
+  }
+
   await procesarPrimeraCitaReferido(pacienteIdNum);
 
   if (meta.descuento_referidor_aplicado === 'true') {
