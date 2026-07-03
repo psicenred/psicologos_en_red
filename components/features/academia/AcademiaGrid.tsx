@@ -1,8 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { Link } from '@/i18n/routing';
+import { CurriculumDisplay } from '@/components/features/academia/courses/CurriculumDisplay';
 import { fetchJsonArray } from '@/lib/fetch-api';
+import type { AcademiaCatalogCourse } from '@/lib/academia/catalog';
 
 const WA_NUM = '525530776194';
 const FALLBACK_IMG =
@@ -19,20 +22,42 @@ type Diplomado = {
   mensaje_whatsapp: string;
 };
 
-export function AcademiaGrid() {
+type GridItem =
+  | { source: 'diplomado'; key: string; data: Diplomado }
+  | { source: 'course'; key: string; data: AcademiaCatalogCourse };
+
+export function AcademiaGrid({
+  platformCourses = [],
+}: {
+  platformCourses?: AcademiaCatalogCourse[];
+}) {
   const t = useTranslations('academia');
-  const [items, setItems] = useState<Diplomado[]>([]);
-  const [selected, setSelected] = useState<Diplomado | null>(null);
+  const [diplomados, setDiplomados] = useState<Diplomado[]>([]);
+  const [selected, setSelected] = useState<GridItem | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingDiplomados, setLoadingDiplomados] = useState(true);
 
   useEffect(() => {
     fetchJsonArray<Diplomado>('/api/diplomados').then(({ data, error }) => {
-      setItems(data);
+      setDiplomados(data);
       setLoadError(error);
-      setLoading(false);
+      setLoadingDiplomados(false);
     });
   }, []);
+
+  const items = useMemo<GridItem[]>(() => {
+    const legacy: GridItem[] = diplomados.map((d) => ({
+      source: 'diplomado',
+      key: `diplomado-${d.id}`,
+      data: d,
+    }));
+    const platform: GridItem[] = platformCourses.map((c) => ({
+      source: 'course',
+      key: `course-${c.id}`,
+      data: c,
+    }));
+    return [...legacy, ...platform];
+  }, [diplomados, platformCourses]);
 
   useEffect(() => {
     if (!selected) return;
@@ -46,6 +71,8 @@ export function AcademiaGrid() {
       window.removeEventListener('keydown', onKey);
     };
   }, [selected]);
+
+  const loading = loadingDiplomados && items.length === 0;
 
   return (
     <>
@@ -62,45 +89,72 @@ export function AcademiaGrid() {
         ) : items.length === 0 && !loadError ? (
           <p className="col-span-full py-10 text-center text-[#666]">{t('empty')}</p>
         ) : (
-          items.map((d) => {
+          items.map((item) => {
+            const isCourse = item.source === 'course';
+            const d = item.data;
             const imgUrl = (d.url_imagen || '').trim() || FALLBACK_IMG;
+            const titulo = d.titulo;
+            const area = d.area;
+            const descripcion = d.descripcion_corta;
+            const fechaInicio = isCourse
+              ? item.data.fecha_inicio
+              : (d as Diplomado).fecha_inicio;
+
             const waText =
-              d.mensaje_whatsapp ||
-              `Hola! Deseo más información del Diplomado: ${d.titulo || ''}`;
+              !isCourse && (d as Diplomado).mensaje_whatsapp
+                ? (d as Diplomado).mensaje_whatsapp
+                : `Hola! Deseo más información del Diplomado: ${titulo || ''}`;
             const waHref = `https://wa.me/${WA_NUM}?text=${encodeURIComponent(waText)}`;
-            const tieneVerMas = (d.descripcion_larga || '').trim().length > 0;
+
+            const tieneVerMas = isCourse
+              ? item.data.has_curriculum
+              : ((d as Diplomado).descripcion_larga || '').trim().length > 0;
 
             return (
-              <div key={d.id} className="curso-card">
+              <div key={item.key} className="curso-card">
                 <div
                   className="curso-img"
                   style={{ backgroundImage: `url('${imgUrl}')` }}
                   role="img"
-                  aria-label={d.titulo}
+                  aria-label={titulo}
                 />
                 <div className="curso-body">
-                  <span className="curso-tag">{d.area}</span>
-                  <h3>{d.titulo}</h3>
-                  <p className="curso-fecha">📅 {t('starts')}: {d.fecha_inicio}</p>
-                  <p>{d.descripcion_corta}</p>
+                  <span className="curso-tag">{area}</span>
+                  <h3>{titulo}</h3>
+                  {fechaInicio ? (
+                    <p className="curso-fecha">
+                      📅 {t('starts')}: {fechaInicio}
+                    </p>
+                  ) : null}
+                  <p>{descripcion}</p>
                   {tieneVerMas ? (
                     <div className="curso-botones">
                       <button
                         type="button"
                         className="btn-curso btn-curso-vermas"
-                        onClick={() => setSelected(d)}
+                        onClick={() => setSelected(item)}
                       >
                         {t('seeMore')}
                       </button>
-                      <a
-                        href={waHref}
-                        className="btn-curso"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {t('moreInfo')}
-                      </a>
+                      {isCourse ? (
+                        <Link href={`/academia/${item.data.slug}`} className="btn-curso">
+                          {t('enrollNow')}
+                        </Link>
+                      ) : (
+                        <a
+                          href={waHref}
+                          className="btn-curso"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {t('moreInfo')}
+                        </a>
+                      )}
                     </div>
+                  ) : isCourse ? (
+                    <Link href={`/academia/${item.data.slug}`} className="btn-curso">
+                      {t('enrollNow')}
+                    </Link>
                   ) : (
                     <a
                       href={waHref}
@@ -137,42 +191,64 @@ export function AcademiaGrid() {
             >
               &times;
             </button>
-            {(selected.url_imagen || '').trim() ? (
+            {(selected.data.url_imagen || '').trim() ? (
               <div className="modal-diplomado-img-wrap">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={selected.url_imagen}
-                  alt={selected.titulo}
+                  src={selected.data.url_imagen}
+                  alt={selected.data.titulo}
                   className="modal-diplomado-img"
                 />
               </div>
             ) : null}
-            <span className="curso-tag">{selected.area}</span>
+            <span className="curso-tag">{selected.data.area}</span>
             <h2 id="modal-diplomado-titulo" className="modal-diplomado-titulo">
-              {selected.titulo}
+              {selected.data.titulo}
             </h2>
-            <p className="curso-fecha">
-              📅 {t('starts')}: {selected.fecha_inicio}
-            </p>
-            <div
-              className="modal-diplomado-body"
-              dangerouslySetInnerHTML={{ __html: selected.descripcion_larga }}
-            />
-            <a
-              href={`https://wa.me/${WA_NUM}?text=${encodeURIComponent(
-                selected.mensaje_whatsapp ||
-                  `Hola! Deseo más información del Diplomado: ${selected.titulo || ''}`,
-              )}`}
-              className="btn-curso"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {t('whatsapp')}
-            </a>
+            {selected.source === 'course' && selected.data.fecha_inicio ? (
+              <p className="curso-fecha">
+                📅 {t('starts')}: {selected.data.fecha_inicio}
+              </p>
+            ) : selected.source === 'diplomado' ? (
+              <p className="curso-fecha">
+                📅 {t('starts')}: {selected.data.fecha_inicio}
+              </p>
+            ) : null}
+
+            {selected.source === 'course' ? (
+              <div className="modal-diplomado-body">
+                <h3 className="mb-3 text-base font-semibold text-[#333]">{t('curriculumTitle')}</h3>
+                <CurriculumDisplay raw={selected.data.curriculum} variant="outline" />
+              </div>
+            ) : (
+              <div
+                className="modal-diplomado-body"
+                dangerouslySetInnerHTML={{
+                  __html: (selected.data as Diplomado).descripcion_larga,
+                }}
+              />
+            )}
+
+            {selected.source === 'course' ? (
+              <Link href={`/academia/${selected.data.slug}`} className="btn-curso">
+                {t('enrollNow')}
+              </Link>
+            ) : (
+              <a
+                href={`https://wa.me/${WA_NUM}?text=${encodeURIComponent(
+                  (selected.data as Diplomado).mensaje_whatsapp ||
+                    `Hola! Deseo más información del Diplomado: ${selected.data.titulo || ''}`,
+                )}`}
+                className="btn-curso"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t('whatsapp')}
+              </a>
+            )}
           </div>
         </div>
       ) : null}
     </>
   );
 }
-

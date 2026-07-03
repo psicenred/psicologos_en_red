@@ -2,6 +2,7 @@ export const STORAGE_BUCKETS = {
   blogImages: 'blog-images',
   psychologistDocs: 'psychologist-docs',
   chatAttachments: 'chat-attachments',
+  academiaSubmissions: 'academia-submissions',
 } as const;
 
 export type StorageBucket =
@@ -27,7 +28,8 @@ export function parseStorageRef(
   if (
     bucket !== STORAGE_BUCKETS.blogImages &&
     bucket !== STORAGE_BUCKETS.psychologistDocs &&
-    bucket !== STORAGE_BUCKETS.chatAttachments
+    bucket !== STORAGE_BUCKETS.chatAttachments &&
+    bucket !== STORAGE_BUCKETS.academiaSubmissions
   ) {
     return null;
   }

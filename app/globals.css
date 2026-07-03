@@ -103,6 +103,24 @@
   color: #555;
 }
 
+.btn-academia-acceso {
+  display: inline-block;
+  margin-top: 1.25rem;
+  background: var(--primario-rosa);
+  color: white;
+  padding: 6px 14px;
+  border-radius: 20px;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: filter 0.2s;
+}
+
+.btn-academia-acceso:hover {
+  color: white;
+  filter: brightness(0.95);
+}
+
 .academia-container {
   padding: 50px 10%;
 }

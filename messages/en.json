@@ -331,6 +331,7 @@
   "academia": {
     "title": "Virtual Academy",
     "heroTagline": "Your learning, your pace",
+    "heroLoginCta": "Course access",
     "welcomeLabel": "Specialized Training",
     "welcomeTitle": "Driving Excellence in Mental Health",
     "welcomeP1": "We specialize in giving psychologists the most up-to-date tools and knowledge in mental health. We understand how important continuing education is for professionals who want to stay at the forefront of a dynamic, evolving field.",
@@ -371,6 +372,8 @@
     "loading": "Loading programs…",
     "seeMore": "Learn more",
     "moreInfo": "More info",
+    "enrollNow": "Enroll",
+    "curriculumTitle": "Syllabus",
     "whatsapp": "More info via WhatsApp",
     "close": "Close",
     "starts": "Starts",

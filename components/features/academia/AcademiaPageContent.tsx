@@ -1,11 +1,20 @@
 import Image from 'next/image';
 import { getTranslations } from 'next-intl/server';
 import { AcademiaGrid } from '@/components/features/academia/AcademiaGrid';
+import { AcademiaHeroLoginCta } from '@/components/features/academia/AcademiaHeroLoginCta';
+import { listPublishedCoursesForCatalog } from '@/lib/academia/catalog';
+import type { AcademiaCatalogCourse } from '@/lib/academia/catalog';
 
 const BENEFIT_KEYS = ['excellence', 'flexibility', 'human', 'certificate'] as const;
 
 export async function AcademiaPageContent() {
   const t = await getTranslations('academia');
+  let platformCourses: AcademiaCatalogCourse[] = [];
+  try {
+    platformCourses = await listPublishedCoursesForCatalog();
+  } catch {
+    platformCourses = [];
+  }
 
   return (
     <>
@@ -13,6 +22,7 @@ export async function AcademiaPageContent() {
         <div className="hero-content">
           <h1>{t('title')}</h1>
           <p>{t('heroTagline')}</p>
+          <AcademiaHeroLoginCta />
         </div>
       </section>
 
@@ -107,7 +117,7 @@ export async function AcademiaPageContent() {
             <span className="subtitulo">{t('upcomingLabel')}</span>
             <h2>{t('offerTitle')}</h2>
           </div>
-          <AcademiaGrid />
+          <AcademiaGrid platformCourses={platformCourses} />
         </section>
       </main>
     </>

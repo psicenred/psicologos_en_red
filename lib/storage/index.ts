@@ -25,6 +25,8 @@ function localRootForBucket(bucket: StorageBucket): string {
       return path.join(process.cwd(), 'uploads', 'documentos');
     case STORAGE_BUCKETS.chatAttachments:
       return path.join(process.cwd(), 'uploads', 'chat');
+    case STORAGE_BUCKETS.academiaSubmissions:
+      return path.join(process.cwd(), 'uploads', 'academia-submissions');
   }
 }
 
@@ -65,6 +67,12 @@ export async function storageUpload(
   if (bucket === STORAGE_BUCKETS.psychologistDocs) {
     return {
       storedPath: path.join('documentos', objectKey).replace(/\\/g, '/'),
+      publicUrl: null,
+    };
+  }
+  if (bucket === STORAGE_BUCKETS.academiaSubmissions) {
+    return {
+      storedPath: path.join('academia-submissions', objectKey).replace(/\\/g, '/'),
       publicUrl: null,
     };
   }

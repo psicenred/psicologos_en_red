@@ -2,8 +2,11 @@ import createIntlMiddleware from 'next-intl/middleware';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getIronSession } from 'iron-session';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { routing, stripLocalePrefix } from '@/i18n/routing';
 import { getSessionOptions, type SessionData } from '@/lib/session';
+import { getSupabaseAnonKey, getSupabaseUrl } from '@/lib/academia/supabase/env';
+import { updateAcademiaSession } from '@/lib/academia/supabase/middleware';
 
 const intlMiddleware = createIntlMiddleware(routing);
 
@@ -12,6 +15,7 @@ function normalizeRol(rol: string | undefined): string {
 }
 
 const PROTECTED_PREFIXES = ['/perfil', '/panel-admin', '/panel-doctor'];
+const CURSO_PROTECTED_PREFIX = '/cursos';
 
 function isProtectedPath(pathname: string): boolean {
   const bare = stripLocalePrefix(pathname);
@@ -58,6 +62,88 @@ export async function middleware(request: NextRequest) {
     getSessionOptions(),
   );
 
+  const barePath = stripLocalePrefix(pathname);
+
+  if (barePath === CURSO_PROTECTED_PREFIX || barePath.startsWith(`${CURSO_PROTECTED_PREFIX}/`)) {
+    if (barePath !== '/cursos' && !barePath.startsWith('/cursos/alumno') && !barePath.startsWith('/cursos/instructor') && !barePath.startsWith('/cursos/admin')) {
+      return response;
+    }
+
+    if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || !process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()) {
+      const loginUrl = new URL('/academia/login', request.url);
+      loginUrl.searchParams.set('next', barePath);
+      return NextResponse.redirect(loginUrl, 307);
+    }
+
+    const academiaResponse = response;
+    await updateAcademiaSession(request, academiaResponse);
+
+    const supabase = createServerClient(getSupabaseUrl(), getSupabaseAnonKey(), {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            academiaResponse.cookies.set(name, value, options);
+          });
+        },
+      },
+    });
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      const loginUrl = new URL('/academia/login', request.url);
+      loginUrl.searchParams.set('next', barePath);
+      return NextResponse.redirect(loginUrl, 307);
+    }
+
+    const role =
+      (user.user_metadata?.academia_role as string | undefined) ??
+      (await resolveAcademiaRoleInMiddleware(supabase, user.id));
+
+    if (barePath.startsWith('/cursos/alumno') && role !== 'student') {
+      if (role === 'instructor') {
+        return NextResponse.redirect(new URL('/cursos/instructor', request.url));
+      }
+      if (role === 'admin') {
+        return NextResponse.redirect(new URL('/cursos/admin', request.url));
+      }
+      const loginUrl = new URL('/academia/login', request.url);
+      loginUrl.searchParams.set('next', barePath);
+      return NextResponse.redirect(loginUrl, 307);
+    }
+
+    if (barePath.startsWith('/cursos/instructor') && role !== 'instructor') {
+      if (role === 'student') {
+        return NextResponse.redirect(new URL('/cursos/alumno', request.url));
+      }
+      if (role === 'admin') {
+        return NextResponse.redirect(new URL('/cursos/admin', request.url));
+      }
+      const loginUrl = new URL('/academia/login', request.url);
+      loginUrl.searchParams.set('next', barePath);
+      return NextResponse.redirect(loginUrl, 307);
+    }
+
+    if (barePath.startsWith('/cursos/admin') && role !== 'admin') {
+      if (role === 'instructor') {
+        return NextResponse.redirect(new URL('/cursos/instructor', request.url));
+      }
+      if (role === 'student') {
+        return NextResponse.redirect(new URL('/cursos/alumno', request.url));
+      }
+      const loginUrl = new URL('/academia/login', request.url);
+      loginUrl.searchParams.set('next', barePath);
+      return NextResponse.redirect(loginUrl, 307);
+    }
+
+    return academiaResponse;
+  }
+
   if (isProtectedPath(pathname)) {
     const barePath = stripLocalePrefix(pathname);
 
@@ -94,6 +180,34 @@ export async function middleware(request: NextRequest) {
   }
 
   return response;
+}
+
+async function resolveAcademiaRoleInMiddleware(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+): Promise<'student' | 'instructor' | 'admin' | null> {
+  const { data: admin } = await supabase
+    .from('course_admin_profiles')
+    .select('id')
+    .eq('id', userId)
+    .maybeSingle();
+  if (admin) return 'admin';
+
+  const { data: student } = await supabase
+    .from('course_student_profiles')
+    .select('id')
+    .eq('id', userId)
+    .maybeSingle();
+  if (student) return 'student';
+
+  const { data: instructor } = await supabase
+    .from('course_instructor_profiles')
+    .select('id')
+    .eq('id', userId)
+    .maybeSingle();
+  if (instructor) return 'instructor';
+
+  return null;
 }
 
 export const config = {
