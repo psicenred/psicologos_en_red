@@ -9,7 +9,7 @@ import {
   type ContabilidadLinea,
   type ContabilidadPeriodo,
   type ContabilidadResponse,
-} from '@/lib/admin/contabilidad';
+} from '@/lib/admin/contabilidad-types';
 
 const PERIODOS: { id: ContabilidadPeriodo; label: string }[] = [
   { id: 'quincena', label: 'Quincena actual' },
