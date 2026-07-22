@@ -320,7 +320,7 @@ export function DoctorPacientesSection({
                     <td>{String(p.total_citas ?? 0)}</td>
                     <td>
                       {diasSinCita(
-                        String(p.ultima_cita || ''),
+                        p.ultima_cita as string | Date | null | undefined,
                         p.citas_futuras as string | number | null | undefined,
                       )}
                     </td>

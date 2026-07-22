@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const result = await query(
       `SELECT u.id, u.nombre, u.email, u.telefono, u.contacto_emergencia,
               (SELECT COUNT(*) FROM citas WHERE paciente_id = u.id AND psicologo_id = $1) as total_citas,
-              (SELECT MAX(fecha) FROM citas WHERE paciente_id = u.id AND psicologo_id = $1 AND fecha < CURRENT_DATE) as ultima_cita,
+              (SELECT TO_CHAR(MAX(fecha), 'YYYY-MM-DD') FROM citas WHERE paciente_id = u.id AND psicologo_id = $1 AND fecha < CURRENT_DATE) as ultima_cita,
               (SELECT COUNT(*) FROM citas WHERE paciente_id = u.id AND psicologo_id = $1 AND fecha >= CURRENT_DATE AND estado NOT IN ('cancelada')) as citas_futuras,
               (SELECT c.motivo_de_consulta FROM citas c WHERE c.paciente_id = u.id AND c.psicologo_id = $1 ORDER BY c.fecha DESC, c.hora DESC NULLS LAST LIMIT 1) as motivo_consulta
        FROM usuarios u

@@ -75,7 +75,7 @@ const PSICOLOGOS_BASE_SQL = `
 const PACIENTES_FULL_SQL = `
   SELECT u.id, u.nombre, u.email, u.telefono, u.contacto_emergencia, u.acepto_publicidad,
          (SELECT COUNT(*)::int FROM citas WHERE paciente_id = u.id) AS total_citas,
-         (SELECT MAX(fecha) FROM citas WHERE paciente_id = u.id AND fecha < CURRENT_DATE) AS ultima_cita,
+         (SELECT TO_CHAR(MAX(fecha), 'YYYY-MM-DD') FROM citas WHERE paciente_id = u.id AND fecha < CURRENT_DATE) AS ultima_cita,
          (SELECT COUNT(*)::int FROM citas WHERE paciente_id = u.id AND fecha >= CURRENT_DATE AND estado NOT IN ('cancelada')) AS citas_futuras,
          (SELECT p.nombre FROM citas c JOIN psicologos p ON p.id = c.psicologo_id WHERE c.paciente_id = u.id ORDER BY c.fecha DESC, c.hora DESC NULLS LAST LIMIT 1) AS psicologo,
          (SELECT c.motivo_de_consulta FROM citas c WHERE c.paciente_id = u.id ORDER BY c.fecha DESC, c.hora DESC NULLS LAST LIMIT 1) AS motivo_consulta
@@ -88,7 +88,7 @@ const PACIENTES_FULL_SQL = `
 const PACIENTES_BASE_SQL = `
   SELECT u.id, u.nombre, u.email, u.telefono, NULL::text AS contacto_emergencia, u.acepto_publicidad,
          (SELECT COUNT(*)::int FROM citas WHERE paciente_id = u.id) AS total_citas,
-         (SELECT MAX(fecha) FROM citas WHERE paciente_id = u.id AND fecha < CURRENT_DATE) AS ultima_cita,
+         (SELECT TO_CHAR(MAX(fecha), 'YYYY-MM-DD') FROM citas WHERE paciente_id = u.id AND fecha < CURRENT_DATE) AS ultima_cita,
          (SELECT COUNT(*)::int FROM citas WHERE paciente_id = u.id AND fecha >= CURRENT_DATE AND estado NOT IN ('cancelada')) AS citas_futuras,
          (SELECT p.nombre FROM citas c JOIN psicologos p ON p.id = c.psicologo_id WHERE c.paciente_id = u.id ORDER BY c.fecha DESC, c.hora DESC NULLS LAST LIMIT 1) AS psicologo,
          NULL::varchar AS motivo_consulta

@@ -39,18 +39,38 @@ export function formatHora(hora: string | null | undefined): string {
   return String(hora).slice(0, 5);
 }
 
+/** Extrae YYYY-MM-DD de Date, ISO o string de fecha (evita String(Date) → "Tue Feb 17"). */
+function toYmd(value: string | Date | null | undefined): string | null {
+  if (value == null || value === '') return null;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    const y = value.getUTCFullYear();
+    const m = String(value.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(value.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const s = String(value).trim();
+  const iso = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (iso) return iso[1];
+  return null;
+}
+
 export function diasSinCita(
-  ultimaCita: string | null | undefined,
+  ultimaCita: string | Date | null | undefined,
   citasFuturas: number | string | null | undefined,
 ): string {
   const futuras = parseInt(String(citasFuturas ?? 0), 10) || 0;
   if (futuras > 0) return '0';
-  if (!ultimaCita) return '—';
-  const ultima = new Date(String(ultimaCita).slice(0, 10));
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  ultima.setHours(0, 0, 0, 0);
-  const diff = Math.floor((hoy.getTime() - ultima.getTime()) / (1000 * 60 * 60 * 24));
+  const ymd = toYmd(ultimaCita);
+  if (!ymd) return '—';
+
+  const [y, m, d] = ymd.split('-').map((n) => parseInt(n, 10));
+  if (!y || !m || !d) return '—';
+
+  const ultimaUtc = Date.UTC(y, m - 1, d);
+  const now = new Date();
+  const hoyUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const diff = Math.floor((hoyUtc - ultimaUtc) / (1000 * 60 * 60 * 24));
   return String(Math.max(0, diff));
 }
 
