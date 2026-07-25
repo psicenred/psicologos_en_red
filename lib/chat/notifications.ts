@@ -1,6 +1,7 @@
 import { getBaseUrl } from '@/lib/config';
 import { query } from '@/lib/db';
 import { sendMail } from '@/lib/email';
+import { waNotificacionChat } from '@/lib/citas/whatsapp-templates';
 import { enviarWhatsapp } from '@/lib/whatsapp';
 
 const CHAT_NOTIF_EMAIL_INTERVAL_MINUTES = 60;
@@ -44,13 +45,14 @@ export async function enviarCorreoNotificacionChatSiAplica(
       rem?.usuario_nombre ||
       'Alguien'
     ).trim();
+    const primerNombre = (dest.nombre || '').split(' ')[0] || 'hola';
     const enlaceLogin = getBaseUrl() + '/login';
 
     const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="text-align: center; margin-bottom: 30px;"><h1 style="color: #c9a0dc;">Psicólogos en Red</h1></div>
             <h2 style="color: #333;">Te están escribiendo</h2>
-            <p style="color: #666; font-size: 16px;">Hola ${(dest.nombre || '').split(' ')[0] || 'hola'}, <strong>${nombreRemitente}</strong> está tratando de comunicarse contigo.</p>
+            <p style="color: #666; font-size: 16px;">Hola ${primerNombre}, <strong>${nombreRemitente}</strong> está tratando de comunicarse contigo.</p>
             <p style="color: #666; font-size: 16px;">Inicia sesión para ver el mensaje que te mandó.</p>
             <div style="text-align: center; margin: 30px 0;">
                 <a href="${enlaceLogin}" style="background: linear-gradient(135deg, #c9a0dc 0%, #a0c4e8 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 30px; font-size: 16px; font-weight: bold;">Iniciar sesión</a>
@@ -73,7 +75,11 @@ export async function enviarCorreoNotificacionChatSiAplica(
 
     await enviarWhatsapp(
       dest.telefono,
-      `Psicólogos en Red – ${nombreRemitente} te escribió en el chat. Inicia sesión para ver el mensaje: ${enlaceLogin}`,
+      waNotificacionChat({
+        primerNombre,
+        nombreRemitente,
+        enlaceLogin,
+      }),
     );
 
     await query(

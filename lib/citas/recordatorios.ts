@@ -9,6 +9,11 @@ import {
   htmlRecordatorioPostCitaDia30,
   htmlRecordatorioPostCitaDia60,
 } from '@/lib/citas/email-templates';
+import {
+  waRecordatorioPostCitaDia15,
+  waRecordatorioPostCitaDia30,
+  waRecordatorioPostCitaDia60,
+} from '@/lib/citas/whatsapp-templates';
 import { enviarCorreosRecordatorioCita } from '@/lib/citas/emails';
 
 export async function ejecutarRecordatoriosCitas(): Promise<{
@@ -201,7 +206,7 @@ export async function ejecutarRecordatoriosPostCita(): Promise<{
           }
           await enviarWhatsapp(
             usuario.telefono,
-            `Psicólogos en Red – Han pasado un par de semanas desde tu última sesión, ${primerNombre}. Agenda aquí: ${enlaceLogin}`,
+            waRecordatorioPostCitaDia15({ primerNombre, enlaceLogin }),
           );
           await query(
             'UPDATE recordatorio_post_cita SET enviado_dia_15_at = NOW() WHERE paciente_id = $1 AND cita_id = $2',
@@ -225,7 +230,7 @@ export async function ejecutarRecordatoriosPostCita(): Promise<{
           }
           await enviarWhatsapp(
             usuario.telefono,
-            `Psicólogos en Red – ${primerNombre}, hace un mes de tu última sesión. Reconecta aquí: ${enlaceLogin}`,
+            waRecordatorioPostCitaDia30({ primerNombre, enlaceLogin }),
           );
           await query(
             'UPDATE recordatorio_post_cita SET enviado_dia_30_at = NOW() WHERE paciente_id = $1 AND cita_id = $2',
@@ -253,7 +258,7 @@ export async function ejecutarRecordatoriosPostCita(): Promise<{
           }
           await enviarWhatsapp(
             usuario.telefono,
-            `Psicólogos en Red – ${primerNombre}, han pasado 60 días desde tu última sesión. Te apoyamos aquí: ${enlaceLogin}`,
+            waRecordatorioPostCitaDia60({ primerNombre, enlaceLogin }),
           );
           await query(
             'UPDATE recordatorio_post_cita SET enviado_dia_60_at = NOW() WHERE paciente_id = $1 AND cita_id = $2',

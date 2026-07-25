@@ -11,6 +11,16 @@ import {
   htmlRecordatorioPaciente,
   htmlRecordatorioPsicologo,
 } from '@/lib/citas/email-templates';
+import {
+  waCitaAgendadaPaciente,
+  waCitaAgendadaPsicologo,
+  waCitaCanceladaPaciente,
+  waCitaCanceladaPsicologo,
+  waCitaReagendadaPaciente,
+  waCitaReagendadaPsicologo,
+  waRecordatorioPaciente,
+  waRecordatorioPsicologo,
+} from '@/lib/citas/whatsapp-templates';
 import { generarIcsCita } from '@/lib/citas/ics';
 import {
   obtenerContextoCitaNotificacion,
@@ -134,11 +144,20 @@ export async function enviarCorreosCitaAgendada(
 
   await enviarWhatsapp(
     ctx.paciente.telefono,
-    `Psicólogos en Red – Cita agendada: ${detPaciente.fechaStr} a las ${detPaciente.horaStr} hrs con ${psicologoNombre}. Iniciar sesión: ${enlaceLogin}`,
+    waCitaAgendadaPaciente({
+      primerNombre,
+      detalle: detPaciente,
+      psicologoNombre,
+      enlaceLogin,
+    }),
   );
   await enviarWhatsapp(
     ctx.psicologo.telefono,
-    `Psicólogos en Red – Nueva cita: ${detPsicologo.fechaStr} ${detPsicologo.horaStr} hrs con ${pacienteNombre}. Iniciar sesión: ${enlaceLogin}`,
+    waCitaAgendadaPsicologo({
+      detalle: detPsicologo,
+      pacienteNombre,
+      enlaceLogin,
+    }),
   );
 }
 
@@ -210,11 +229,19 @@ export async function enviarCorreosCitaReagendada(
 
   await enviarWhatsapp(
     ctx.paciente.telefono,
-    `Psicólogos en Red – Cita reagendada: ${detPaciente.fechaStr} ${detPaciente.horaStr} hrs. Iniciar sesión: ${enlaceLogin}`,
+    waCitaReagendadaPaciente({
+      detalle: detPaciente,
+      psicologoNombre,
+      enlaceLogin,
+    }),
   );
   await enviarWhatsapp(
     ctx.psicologo.telefono,
-    `Psicólogos en Red – Cita reagendada con ${pacienteNombre}: ${detPsicologo.fechaStr} ${detPsicologo.horaStr} hrs. Iniciar sesión: ${enlaceLogin}`,
+    waCitaReagendadaPsicologo({
+      detalle: detPsicologo,
+      pacienteNombre,
+      enlaceLogin,
+    }),
   );
 }
 
@@ -286,11 +313,19 @@ export async function enviarCorreosCitaCancelada(
 
   await enviarWhatsapp(
     ctx.psicologo.telefono,
-    `Psicólogos en Red – Cita cancelada: ${detPsicologo.fechaStr} ${detPsicologo.horaStr} hrs con ${pacienteNombre}. Iniciar sesión: ${enlaceLogin}`,
+    waCitaCanceladaPsicologo({
+      detalle: detPsicologo,
+      pacienteNombre,
+      enlaceLogin,
+    }),
   );
   await enviarWhatsapp(
     ctx.paciente.telefono,
-    `Psicólogos en Red – Tu cita del ${detPaciente.fechaStr} fue cancelada. Puedes agendar otra: ${enlaceCatalogo}`,
+    waCitaCanceladaPaciente({
+      detalle: detPaciente,
+      psicologoNombre,
+      enlaceCatalogo,
+    }),
   );
 }
 
@@ -353,10 +388,19 @@ export async function enviarCorreosRecordatorioCita(
 
   await enviarWhatsapp(
     ctx.paciente.telefono,
-    `Psicólogos en Red – Recordatorio: tu sesión es en 30 min (${detPaciente.fechaStr} ${detPaciente.horaStr} hrs). Iniciar sesión: ${enlaceLogin}`,
+    waRecordatorioPaciente({
+      primerNombre,
+      psicologoNombre,
+      detalle: detPaciente,
+      enlaceLogin,
+    }),
   );
   await enviarWhatsapp(
     ctx.psicologo.telefono,
-    `Psicólogos en Red – Recordatorio: sesión en 30 min con ${pacienteNombre} (${detPsicologo.fechaStr} ${detPsicologo.horaStr} hrs). Iniciar sesión: ${enlaceLogin}`,
+    waRecordatorioPsicologo({
+      pacienteNombre,
+      detalle: detPsicologo,
+      enlaceLogin,
+    }),
   );
 }
