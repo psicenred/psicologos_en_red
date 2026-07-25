@@ -43,6 +43,8 @@ export async function sendViaBaileysWorker(
 export async function getBaileysWorkerStatus(): Promise<{
   connected: boolean;
   provider: 'baileys';
+  queueDepth?: number;
+  minIntervalMs?: number;
 } | null> {
   const base = workerUrl();
   const secret = process.env.WHATSAPP_WORKER_SECRET?.trim();
@@ -53,6 +55,16 @@ export async function getBaileysWorkerStatus(): Promise<{
     cache: 'no-store',
   });
   if (!res.ok) return { connected: false, provider: 'baileys' };
-  const data = (await res.json()) as { connected?: boolean };
-  return { connected: Boolean(data.connected), provider: 'baileys' };
+  const data = (await res.json()) as {
+    connected?: boolean;
+    queueDepth?: number;
+    minIntervalMs?: number;
+  };
+  return {
+    connected: Boolean(data.connected),
+    provider: 'baileys',
+    queueDepth: typeof data.queueDepth === 'number' ? data.queueDepth : undefined,
+    minIntervalMs:
+      typeof data.minIntervalMs === 'number' ? data.minIntervalMs : undefined,
+  };
 }

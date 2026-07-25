@@ -9,7 +9,7 @@ type WhatsappStatus = {
   twilioConfigured: boolean;
   workerUrl: string | null;
   pairPath: string | null;
-  worker: { connected: boolean; provider: string } | null;
+  worker: { connected: boolean; provider: string; queueDepth?: number; minIntervalMs?: number } | null;
 };
 
 async function fetchStatus(): Promise<WhatsappStatus> {
@@ -130,6 +130,15 @@ export function AdminWhatsappSection() {
             <li>
               <strong>Sesión WhatsApp:</strong>{' '}
               {connected ? 'vinculada' : 'sin vincular o caída'}
+            </li>
+            <li>
+              <strong>Cola / intervalo:</strong>{' '}
+              {typeof data?.worker?.queueDepth === 'number'
+                ? `${data.worker.queueDepth} en cola`
+                : '—'}
+              {typeof data?.worker?.minIntervalMs === 'number'
+                ? ` · mínimo ${Math.round(data.worker.minIntervalMs / 1000)}s entre mensajes`
+                : ''}
             </li>
             {data?.pairPath ? (
               <li>

@@ -36,6 +36,11 @@ const AUTH_DIR =
   process.env.WHATSAPP_AUTH_DIR ||
   path.join(__dirname, '..', 'data', 'whatsapp-auth');
 const QR_IN_TERMINAL = process.env.WHATSAPP_QR_TERMINAL === '1';
+/** Mínimo entre envíos reales (evita ráfagas / bans). Default 10 s. */
+const MIN_INTERVAL_MS = Math.max(
+  0,
+  parseInt(process.env.WHATSAPP_MIN_INTERVAL_MS || '10000', 10) || 10000,
+);
 
 if (!SECRET) {
   console.error('Falta WHATSAPP_WORKER_SECRET');
@@ -49,6 +54,43 @@ let connected = false;
 let starting = false;
 let currentQr = null;
 let qrUpdatedAt = null;
+let lastSendAt = 0;
+let queueDepth = 0;
+/** Cadena serial: un envío a la vez + gap mínimo entre ellos. */
+let sendChain = Promise.resolve();
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Encola un envío: nunca en paralelo y con ≥ MIN_INTERVAL_MS desde el anterior.
+ */
+function enqueueSend(task) {
+  queueDepth += 1;
+  const run = sendChain.then(async () => {
+    const waitMs = Math.max(0, MIN_INTERVAL_MS - (Date.now() - lastSendAt));
+    if (waitMs > 0) {
+      console.log(
+        `[whatsapp-worker] Cola: esperando ${waitMs}ms (intervalo ${MIN_INTERVAL_MS}ms, profundidad ${queueDepth})`,
+      );
+      await sleep(waitMs);
+    }
+    try {
+      const result = await task();
+      lastSendAt = Date.now();
+      return result;
+    } finally {
+      queueDepth = Math.max(0, queueDepth - 1);
+    }
+  });
+  // Mantener la cadena viva aunque falle un envío
+  sendChain = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
 
 function toJid(raw) {
   const digits = String(raw || '').replace(/\D/g, '');
@@ -193,11 +235,23 @@ const app = express();
 app.use(express.json({ limit: '32kb' }));
 
 app.get('/live', (_req, res) => {
-  res.json({ ok: true, connected });
+  res.json({
+    ok: true,
+    connected,
+    queueDepth,
+    minIntervalMs: MIN_INTERVAL_MS,
+  });
 });
 
 app.get('/health', authMiddleware, (_req, res) => {
-  res.json({ connected, provider: 'baileys', authDir: AUTH_DIR });
+  res.json({
+    connected,
+    provider: 'baileys',
+    authDir: AUTH_DIR,
+    queueDepth,
+    minIntervalMs: MIN_INTERVAL_MS,
+    lastSendAt: lastSendAt || null,
+  });
 });
 
 /** Estado JSON para polling desde /pair */
@@ -289,16 +343,33 @@ app.post('/send', authMiddleware, async (req, res) => {
       return;
     }
 
-    await sock.sendMessage(jid, { text: message.trim() });
-    res.json({ ok: true, jid });
+    const text = message.trim();
+    if (!text) {
+      res.status(400).json({ error: 'Mensaje vacío' });
+      return;
+    }
+
+    const result = await enqueueSend(async () => {
+      if (!sock || !connected) {
+        throw new Error('WhatsApp no conectado');
+      }
+      await sock.sendMessage(jid, { text });
+      return { ok: true, jid, queuedWaitApplied: true };
+    });
+
+    res.json(result);
   } catch (err) {
     console.error('[whatsapp-worker] send:', err.message);
-    res.status(500).json({ error: err.message || 'Error al enviar' });
+    const status = String(err.message || '').includes('no conectado') ? 503 : 500;
+    res.status(status).json({ error: err.message || 'Error al enviar' });
   }
 });
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[whatsapp-worker] API en http://0.0.0.0:${PORT}`);
+  console.log(
+    `[whatsapp-worker] Intervalo mínimo entre mensajes: ${MIN_INTERVAL_MS}ms`,
+  );
   console.log('[whatsapp-worker] Vincular: GET /pair?token=...');
   startBaileys().catch((err) => {
     console.error('[whatsapp-worker] init:', err.message);
