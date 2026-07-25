@@ -13,6 +13,7 @@ export const ADMIN_SECTION_TITLES: Record<string, string> = {
   psicologos: 'Psicólogos',
   pacientes: 'Pacientes',
   contabilidad: 'Contabilidad',
+  whatsapp: 'WhatsApp',
   blog: 'Gestor de Blog',
   configuracion: 'Configuración',
 };
@@ -23,6 +24,7 @@ const NAV = [
   { id: 'psicologos', label: 'Psicólogos', icon: '👨‍⚕️' },
   { id: 'pacientes', label: 'Pacientes', icon: '👥' },
   { id: 'contabilidad', label: 'Contabilidad', icon: '💰' },
+  { id: 'whatsapp', label: 'WhatsApp', icon: '💬' },
   { id: 'blog', label: 'Blog', icon: '📝' },
   { id: 'configuracion', label: 'Configuración', icon: '⚙️' },
 ];

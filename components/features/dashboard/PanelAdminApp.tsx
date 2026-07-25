@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { AdminContabilidadSection } from '@/components/features/admin/AdminContabilidadSection';
 import { AdminShell } from '@/components/features/admin/AdminShell';
+import { AdminWhatsappSection } from '@/components/features/admin/AdminWhatsappSection';
 import {
   AdminBlogSection,
   AdminCitasSection,
@@ -27,6 +28,7 @@ export function PanelAdminApp({
       {section === 'psicologos' && <AdminPsicologosSection initialData={initialData} />}
       {section === 'pacientes' && <AdminPacientesSection initialData={initialData} />}
       {section === 'contabilidad' && <AdminContabilidadSection />}
+      {section === 'whatsapp' && <AdminWhatsappSection />}
       {section === 'blog' && <AdminBlogSection initialData={initialData} />}
       {section === 'configuracion' && <AdminConfigSection initialData={initialData} />}
     </AdminShell>
