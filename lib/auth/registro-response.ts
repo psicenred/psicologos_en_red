@@ -59,6 +59,12 @@ export function interpretRegistroResponse(input: {
   if (code === 'SERVER_ERROR') {
     return { kind: 'error', code, message: input.payload?.error };
   }
+  if (code === 'CAPTCHA_FAILED') {
+    return { kind: 'error', code, message: input.payload?.error };
+  }
+  if (code === 'RATE_LIMITED') {
+    return { kind: 'error', code, message: input.payload?.error };
+  }
   if (input.payload?.error) {
     return { kind: 'error', code: code || 'API_ERROR', message: input.payload.error };
   }

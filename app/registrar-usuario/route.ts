@@ -6,6 +6,8 @@ import {
   redirectGet,
 } from '@/lib/auth/api';
 import { ensureDb, registerUsuario } from '@/lib/auth/service';
+import { enforceRateLimit } from '@/lib/security/rate-limit';
+import { getRequestClientIp, verifyTurnstileToken } from '@/lib/security/turnstile';
 
 function wantsJson(request: Request): boolean {
   return request.headers.get('accept')?.includes('application/json') ?? false;
@@ -13,6 +15,28 @@ function wantsJson(request: Request): boolean {
 
 export async function POST(request: Request) {
   const json = wantsJson(request);
+
+  const limited = await enforceRateLimit(request, {
+    bucket: 'auth:register',
+    limit: 5,
+    windowSec: 900,
+  });
+  if (limited) {
+    if (json) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: 'RATE_LIMITED',
+          error: 'Demasiados intentos de registro. Intenta de nuevo más tarde.',
+        },
+        {
+          status: 429,
+          headers: { 'Retry-After': '900' },
+        },
+      );
+    }
+    return limited;
+  }
 
   if (!ensureDb()) {
     if (json) {
@@ -26,6 +50,30 @@ export async function POST(request: Request) {
 
   try {
     const body = await parseFormBody(request);
+
+    const captcha = await verifyTurnstileToken(
+      typeof body.cf_turnstile_response === 'string'
+        ? body.cf_turnstile_response
+        : typeof body['cf-turnstile-response'] === 'string'
+          ? body['cf-turnstile-response']
+          : null,
+      getRequestClientIp(request),
+    );
+    if (!captcha.ok) {
+      if (json) {
+        return NextResponse.json(
+          { ok: false, code: 'CAPTCHA_FAILED', error: captcha.error },
+          { status: 400 },
+        );
+      }
+      return authMessageBox({
+        variant: 'error',
+        title: 'CAPTCHA',
+        body: captcha.error,
+        actionHtml: '<a href="/registro">Volver al registro</a>',
+      });
+    }
+
     const result = await registerUsuario(body);
 
     if ('redirect' in result) {

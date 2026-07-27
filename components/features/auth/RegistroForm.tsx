@@ -3,13 +3,17 @@
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/features/auth/PasswordInput';
 import { Label } from '@/components/ui/label';
 import { PhoneCountryInput } from '@/components/features/auth/PhoneCountryInput';
+import {
+  resetTurnstileWidgets,
+  TurnstileWidget,
+} from '@/components/features/auth/TurnstileWidget';
 import { DEFAULT_PHONE_COUNTRY_DIAL } from '@/lib/phone/country-codes';
 import { formatPhoneWithCountryCode } from '@/lib/phone/format';
 import { registroSchema, type RegistroInput } from '@/lib/schemas/auth';
@@ -20,9 +24,13 @@ import {
   parseRegistroPayload,
 } from '@/lib/auth/registro-response';
 
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || '';
+
 export function RegistroForm() {
   const t = useTranslations('auth');
+  const locale = useLocale();
   const [error, setError] = useState('');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const {
     register,
     control,
@@ -39,6 +47,12 @@ export function RegistroForm() {
 
   async function onSubmit(data: RegistroInput) {
     setError('');
+
+    if (TURNSTILE_SITE_KEY && !captchaToken) {
+      setError(t('captchaRequired'));
+      return;
+    }
+
     const telefono = formatPhoneWithCountryCode(
       data.codigo_pais || DEFAULT_PHONE_COUNTRY_DIAL,
       data.telefono_numero ?? '',
@@ -53,6 +67,9 @@ export function RegistroForm() {
     };
     if (data.acepto_publicidad) {
       params.acepto_publicidad = 'on';
+    }
+    if (captchaToken) {
+      params.cf_turnstile_response = captchaToken;
     }
     const refCode = getStoredReferralCode();
     if (refCode) {
@@ -84,6 +101,9 @@ export function RegistroForm() {
         return;
       }
 
+      setCaptchaToken(null);
+      resetTurnstileWidgets();
+
       if (result.code === 'EMAIL_EXISTS') {
         setError(t('emailAlreadyRegistered'));
         return;
@@ -100,6 +120,14 @@ export function RegistroForm() {
         setError(t('dbUnavailable'));
         return;
       }
+      if (result.code === 'CAPTCHA_FAILED') {
+        setError(result.message || t('captchaFailed'));
+        return;
+      }
+      if (result.code === 'RATE_LIMITED') {
+        setError(result.message || t('rateLimited'));
+        return;
+      }
       if (result.code === 'SERVER_ERROR') {
         setError(result.message || t('registerError'));
         return;
@@ -110,6 +138,8 @@ export function RegistroForm() {
       }
       setError(t('registerError'));
     } catch {
+      setCaptchaToken(null);
+      resetTurnstileWidgets();
       setError(t('connectionError'));
     }
   }
@@ -174,8 +204,19 @@ export function RegistroForm() {
         <input type="checkbox" className="mt-1" {...register('acepto_publicidad')} />
         <span>{t('acceptMarketing')}</span>
       </label>
+      {TURNSTILE_SITE_KEY ? (
+        <TurnstileWidget
+          siteKey={TURNSTILE_SITE_KEY}
+          onToken={setCaptchaToken}
+          language={locale.startsWith('en') ? 'en' : 'es'}
+        />
+      ) : null}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      <Button type="submit" className="w-full" disabled={isSubmitting}>
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={isSubmitting || (Boolean(TURNSTILE_SITE_KEY) && !captchaToken)}
+      >
         {isSubmitting ? t('registering') : t('register')}
       </Button>
       <p className="text-center text-sm">
