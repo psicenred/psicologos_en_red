@@ -927,6 +927,39 @@ body.video-pseudo-fullscreen .perfil-video-container {
   flex-direction: column;
 }
 
+.chat-header-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px;
+  border-bottom: 1px solid #eee;
+  flex-shrink: 0;
+}
+
+.chat-header-info h4 {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-back-btn {
+  display: none;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  color: #334155;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 .chat-messages-container {
   flex: 1;
   min-height: 0;
@@ -1382,13 +1415,14 @@ body.video-pseudo-fullscreen .perfil-video-container {
   .chat-main-container {
     flex-direction: column;
     height: calc(
-      100svh - 120px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
+      100svh - 88px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
     );
     max-height: calc(
-      100svh - 120px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
+      100svh - 88px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
     );
     min-height: 0;
     overflow: hidden;
+    border-radius: 12px;
   }
 
   #seccion-chat {
@@ -1406,12 +1440,48 @@ body.video-pseudo-fullscreen .perfil-video-container {
 
   .chat-sidebar {
     width: 100%;
-    max-height: 28svh;
+    max-height: 18svh;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     flex-shrink: 0;
     border-right: none;
     border-bottom: 1px solid #eee;
+    padding: 10px 12px;
+  }
+
+  .chat-sidebar h3 {
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+  }
+
+  .contacto-item-psicologo,
+  .contacto-item-doctor {
+    padding: 10px 12px;
+    margin-bottom: 4px;
+  }
+
+  /* Al abrir una conversación: pantalla completa de mensajes */
+  .chat-main-container.chat-conversation-open .chat-sidebar {
+    display: none;
+  }
+
+  .chat-main-container.chat-conversation-open {
+    height: calc(
+      100svh - 72px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
+    );
+    max-height: calc(
+      100svh - 72px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
+    );
+  }
+
+  .chat-back-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .chat-header-info {
+    padding: 10px 12px;
   }
 
   .chat-window {
@@ -1429,6 +1499,14 @@ body.video-pseudo-fullscreen .perfil-video-container {
 
   .chat-messages-inner {
     min-height: 0;
+    padding: 14px 12px 28px;
+    gap: 8px;
+  }
+
+  .msg {
+    max-width: 88%;
+    font-size: 0.95rem;
+    line-height: 1.4;
   }
 
   .chat-input-area {
@@ -1467,6 +1545,15 @@ body.video-pseudo-fullscreen .perfil-video-container {
     display: flex;
     flex-direction: column;
     min-height: 0;
+    padding-top: calc(88px + env(safe-area-inset-top, 0px));
+    padding-left: 12px;
+    padding-right: 12px;
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .perfil-main:has(#seccion-chat .chat-conversation-open) {
+    padding-top: calc(72px + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
   }
 
   .cita-card-actions > button,

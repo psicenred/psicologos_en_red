@@ -219,7 +219,9 @@ export function PrivateChat({
   if (variant === 'legacy-doctor') {
     const activo = contactos.find((c) => c.id === chatId);
     return (
-      <div className="chat-main-container">
+      <div
+        className={`chat-main-container${chatId ? ' chat-conversation-open' : ''}`}
+      >
         <aside className="chat-sidebar">
           <h3>Mis Pacientes</h3>
           {contactos.length === 0 ? (
@@ -251,8 +253,18 @@ export function PrivateChat({
           )}
         </aside>
         <section className="chat-window">
-          <div id="chat-header-info" style={{ padding: 15, borderBottom: '1px solid #eee' }}>
-            <h4 style={{ margin: 0 }}>{activo?.nombre || 'Selecciona un paciente'}</h4>
+          <div className="chat-header-info" id="chat-header-info">
+            {chatId ? (
+              <button
+                type="button"
+                className="chat-back-btn"
+                onClick={() => setChatId(null)}
+                aria-label="Volver a contactos"
+              >
+                ←
+              </button>
+            ) : null}
+            <h4>{activo?.nombre || 'Selecciona un paciente'}</h4>
           </div>
           <div className="chat-messages-container">
             <div className="chat-messages-inner">{renderMensajes()}</div>
@@ -302,7 +314,9 @@ export function PrivateChat({
   if (variant === 'legacy') {
     const activo = contactos.find((c) => c.id === chatId);
     return (
-      <div className="chat-main-container">
+      <div
+        className={`chat-main-container${chatId ? ' chat-conversation-open' : ''}`}
+      >
         <aside className="chat-sidebar">
           <h3>Mis Especialistas</h3>
           {contactos.length === 0 ? (
@@ -330,8 +344,18 @@ export function PrivateChat({
         </aside>
 
         <section className="chat-window">
-          <div id="chat-header-info" style={{ padding: 15, borderBottom: '1px solid #eee' }}>
-            <h4 id="nombre-psicologo-chat" style={{ margin: 0 }}>
+          <div className="chat-header-info" id="chat-header-info">
+            {chatId ? (
+              <button
+                type="button"
+                className="chat-back-btn"
+                onClick={() => setChatId(null)}
+                aria-label="Volver a contactos"
+              >
+                ←
+              </button>
+            ) : null}
+            <h4 id="nombre-psicologo-chat">
               {activo?.nombre || 'Selecciona un especialista'}
             </h4>
           </div>
@@ -387,7 +411,7 @@ export function PrivateChat({
 
   return (
     <div className="grid gap-4 md:grid-cols-3">
-      <Card className="md:col-span-1">
+      <Card className={`md:col-span-1 ${chatId ? 'hidden md:block' : ''}`}>
         <CardHeader>
           <CardTitle className="text-base">Contactos</CardTitle>
         </CardHeader>
@@ -415,12 +439,17 @@ export function PrivateChat({
         </CardContent>
       </Card>
 
-      <Card className="md:col-span-2">
-        <CardContent className="flex h-[28rem] flex-col p-4">
+      <Card className={`md:col-span-2 ${!chatId ? 'hidden md:block' : ''}`}>
+        <CardContent className="flex min-h-[70svh] flex-col p-4 md:h-[28rem] md:min-h-0">
           {!chatId ? (
             <p className="m-auto text-sm text-muted-foreground">Selecciona un contacto</p>
           ) : (
             <>
+              <div className="mb-2 flex items-center gap-2 md:hidden">
+                <Button type="button" variant="ghost" size="sm" onClick={() => setChatId(null)}>
+                  ← Contactos
+                </Button>
+              </div>
               <div className="flex-1 space-y-2 overflow-y-auto">
                 {msgError ? (
                   <p className="text-sm text-destructive">{msgError}</p>
