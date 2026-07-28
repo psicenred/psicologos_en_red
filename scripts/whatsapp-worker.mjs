@@ -63,6 +63,19 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Fuerza presencia offline para que el teléfono siga recibiendo notificaciones. */
+async function markPresenceUnavailable() {
+  if (!sock) return;
+  try {
+    await sock.sendPresenceUpdate('unavailable');
+  } catch (err) {
+    console.warn(
+      '[whatsapp-worker] presence unavailable:',
+      err?.message || err,
+    );
+  }
+}
+
 /**
  * Encola un envío: nunca en paralelo y con ≥ MIN_INTERVAL_MS desde el anterior.
  */
@@ -208,6 +221,7 @@ async function startBaileys() {
       qrUpdatedAt = null;
       starting = false;
       console.log('[whatsapp-worker] Conectado');
+      void markPresenceUnavailable();
     }
 
     if (connection === 'close') {
@@ -355,8 +369,13 @@ app.post('/send', authMiddleware, async (req, res) => {
       if (!sock || !connected) {
         throw new Error('WhatsApp no conectado');
       }
-      await sock.sendMessage(jid, { text });
-      return { ok: true, jid, queuedWaitApplied: true };
+      try {
+        await sock.sendMessage(jid, { text });
+        return { ok: true, jid, queuedWaitApplied: true };
+      } finally {
+        // Tras enviar, Baileys puede marcar available; devolver a unavailable.
+        await markPresenceUnavailable();
+      }
     });
 
     res.json(result);
