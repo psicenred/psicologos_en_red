@@ -16,8 +16,7 @@
     "check-api-parity": "node scripts/check-api-parity.mjs",
     "migrate-storage": "node scripts/migrate-storage.mjs",
     "migrate-storage:dry-run": "node scripts/migrate-storage.mjs --dry-run",
-    "whatsapp:worker": "node scripts/whatsapp-worker.mjs",
-    "postinstall": "patch-package"
+    "whatsapp:worker": "node scripts/whatsapp-worker.mjs"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.91.0",
@@ -41,7 +40,7 @@
     "@tiptap/pm": "^3.27.0",
     "@tiptap/react": "^3.27.0",
     "@tiptap/starter-kit": "^3.27.0",
-    "@whiskeysockets/baileys": "^7.0.0-rc13",
+    "@whiskeysockets/baileys": "^6.7.22",
     "bcrypt": "^6.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -57,8 +56,8 @@
     "next": "^15.2.4",
     "next-intl": "^4.13.0",
     "nodemailer": "^9.0.1",
-    "patch-package": "^8.0.1",
     "pg": "^8.17.2",
+    "pino": "^10.3.1",
     "postcss": "^8.5.15",
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0",

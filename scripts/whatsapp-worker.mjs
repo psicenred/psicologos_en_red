@@ -2,17 +2,20 @@
 /**
  * Worker Baileys (WhatsApp Web) — proceso persistente.
  *
+ * Setup mínimo estilo LVFW: Baileys 6.7.x, sin parches de presencia.
+ *
  * Uso:
  *   npm run whatsapp:worker
  *
- * Vincular WhatsApp (primera vez o sesión perdida):
- *   Abre /pair?token=TU_WHATSAPP_WORKER_SECRET en el navegador
+ * Vincular:
+ *   Abre /pair?token=TU_WHATSAPP_WORKER_SECRET
  *
  * Variables:
  *   WHATSAPP_WORKER_PORT=4055
  *   WHATSAPP_WORKER_SECRET=...
  *   WHATSAPP_AUTH_DIR=./data/whatsapp-auth
- *   WHATSAPP_QR_TERMINAL=1  (opcional: también imprimir QR en logs)
+ *   WHATSAPP_QR_TERMINAL=1
+ *   WHATSAPP_MIN_INTERVAL_MS=10000
  */
 
 import fs from 'fs';
@@ -23,8 +26,10 @@ import QRCode from 'qrcode';
 import qrcodeTerminal from 'qrcode-terminal';
 import makeWASocket, {
   DisconnectReason,
+  fetchLatestBaileysVersion,
   useMultiFileAuthState,
 } from '@whiskeysockets/baileys';
+import pino from 'pino';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(
@@ -41,13 +46,6 @@ const MIN_INTERVAL_MS = Math.max(
   0,
   parseInt(process.env.WHATSAPP_MIN_INTERVAL_MS || '10000', 10) || 10000,
 );
-/** Reafirma presencia offline periódicamente (ms). Default 2 min. */
-const PRESENCE_KEEPALIVE_MS = Math.max(
-  30_000,
-  parseInt(process.env.WHATSAPP_PRESENCE_KEEPALIVE_MS || '120000', 10) || 120_000,
-);
-const PRESENCE_DISPLAY_NAME =
-  process.env.WHATSAPP_PRESENCE_NAME?.trim() || 'Psicologos en Red';
 
 if (!SECRET) {
   console.error('Falta WHATSAPP_WORKER_SECRET');
@@ -65,73 +63,9 @@ let lastSendAt = 0;
 let queueDepth = 0;
 /** Cadena serial: un envío a la vez + gap mínimo entre ellos. */
 let sendChain = Promise.resolve();
-let presenceKeepaliveTimer = null;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function stopPresenceKeepalive() {
-  if (presenceKeepaliveTimer) {
-    clearInterval(presenceKeepaliveTimer);
-    presenceKeepaliveTimer = null;
-  }
-}
-
-function startPresenceKeepalive() {
-  stopPresenceKeepalive();
-  presenceKeepaliveTimer = setInterval(() => {
-    if (connected) void markPresenceUnavailable('keepalive');
-  }, PRESENCE_KEEPALIVE_MS);
-  // Evitar que Node mantenga el proceso solo por este timer si algo más falla
-  if (typeof presenceKeepaliveTimer.unref === 'function') {
-    presenceKeepaliveTimer.unref();
-  }
-}
-
-/**
- * Asegura me.name: sin nombre Baileys ignora sendPresenceUpdate por completo.
- */
-function ensurePresenceName() {
-  const me = sock?.authState?.creds?.me;
-  if (!me) return false;
-  if (!me.name || !String(me.name).trim()) {
-    me.name = PRESENCE_DISPLAY_NAME;
-    console.warn(
-      `[whatsapp-worker] creds.me.name vacío; usando "${PRESENCE_DISPLAY_NAME}" para presencia`,
-    );
-  }
-  return true;
-}
-
-/** Fuerza presencia offline para que el teléfono siga recibiendo notificaciones. */
-async function markPresenceUnavailable(reason = '') {
-  if (!sock || !connected) return;
-  if (!ensurePresenceName()) {
-    console.warn('[whatsapp-worker] presence skip: sin creds.me');
-    return;
-  }
-  try {
-    await sock.sendPresenceUpdate('unavailable');
-    if (reason) {
-      console.log(`[whatsapp-worker] presence → unavailable (${reason})`);
-    }
-  } catch (err) {
-    console.warn(
-      '[whatsapp-worker] presence unavailable:',
-      err?.message || err,
-    );
-  }
-}
-
-/** Tras conectar, reintenta unavailable (Baileys a veces pisa la presencia al sincronizar). */
-function schedulePresenceUnavailableBurst() {
-  const delays = [500, 2000, 8000, 20000];
-  for (const ms of delays) {
-    setTimeout(() => {
-      if (connected) void markPresenceUnavailable(`retry-${ms}ms`);
-    }, ms);
-  }
 }
 
 /**
@@ -155,7 +89,6 @@ function enqueueSend(task) {
       queueDepth = Math.max(0, queueDepth - 1);
     }
   });
-  // Mantener la cadena viva aunque falle un envío
   sendChain = run.then(
     () => undefined,
     () => undefined,
@@ -235,41 +168,23 @@ async function startBaileys() {
   starting = true;
 
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
-
-  sock = makeWASocket({
-    auth: state,
-    printQRInTerminal: false,
-    logger: {
-      level: 'silent',
-      trace() {},
-      debug() {},
-      info() {},
-      warn() {},
-      error() {},
-      fatal() {},
-      child() {
-        return this;
-      },
-    },
-    browser: ['Psicologos en Red', 'Chrome', '1.0.0'],
-    syncFullHistory: false,
-    // Evita presencia "available": WhatsApp silencia pushes del teléfono si el companion está online.
-    markOnlineOnConnect: false,
-  });
-
+  const { version, isLatest } = await fetchLatestBaileysVersion();
   console.log(
-    '[whatsapp-worker] markOnlineOnConnect=false → passive IQ al login (parche Baileys)',
+    `[whatsapp-worker] Baileys WA version ${version.join('.')} (latest=${isLatest})`,
   );
+
+  // Socket mínimo (como LVFW): sin markOnlineOnConnect / browser / presencia / parches.
+  sock = makeWASocket({
+    version,
+    auth: state,
+    logger: pino({ level: 'silent' }),
+    printQRInTerminal: false,
+  });
 
   sock.ev.on('creds.update', saveCreds);
 
   sock.ev.on('connection.update', (update) => {
-    const { connection, lastDisconnect, qr, isOnline } = update;
-
-    // Si algo nos marca online, forzar offline de inmediato
-    if (isOnline === true && connected) {
-      void markPresenceUnavailable('isOnline-true');
-    }
+    const { connection, lastDisconnect, qr } = update;
 
     if (qr) {
       currentQr = qr;
@@ -288,16 +203,11 @@ async function startBaileys() {
       qrUpdatedAt = null;
       starting = false;
       console.log('[whatsapp-worker] Conectado');
-      ensurePresenceName();
-      void markPresenceUnavailable('connect');
-      schedulePresenceUnavailableBurst();
-      startPresenceKeepalive();
     }
 
     if (connection === 'close') {
       connected = false;
       starting = false;
-      stopPresenceKeepalive();
       const code = lastDisconnect?.error?.output?.statusCode;
       const loggedOut = code === DisconnectReason.loggedOut;
       console.warn('[whatsapp-worker] Desconectado', code ?? '');
@@ -341,7 +251,6 @@ app.get('/health', authMiddleware, (_req, res) => {
   });
 });
 
-/** Estado JSON para polling desde /pair */
 app.get('/pair/status', (req, res) => {
   if (readPairToken(req) !== SECRET) {
     res.status(401).json({ error: 'Unauthorized' });
@@ -354,7 +263,6 @@ app.get('/pair/status', (req, res) => {
   });
 });
 
-/** Página web para escanear QR (token = WHATSAPP_WORKER_SECRET) */
 app.get('/pair', async (req, res) => {
   if (readPairToken(req) !== SECRET) {
     res
@@ -440,16 +348,8 @@ app.post('/send', authMiddleware, async (req, res) => {
       if (!sock || !connected) {
         throw new Error('WhatsApp no conectado');
       }
-      try {
-        await sock.sendMessage(jid, { text });
-        return { ok: true, jid, queuedWaitApplied: true };
-      } finally {
-        // Tras enviar, Baileys puede marcar available; devolver a unavailable.
-        await markPresenceUnavailable('after-send');
-        setTimeout(() => {
-          if (connected) void markPresenceUnavailable('after-send-delayed');
-        }, 1500);
-      }
+      await sock.sendMessage(jid, { text });
+      return { ok: true, jid, queuedWaitApplied: true };
     });
 
     res.json(result);
@@ -465,9 +365,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(
     `[whatsapp-worker] Intervalo mínimo entre mensajes: ${MIN_INTERVAL_MS}ms`,
   );
-  console.log(
-    `[whatsapp-worker] Presence keepalive: ${PRESENCE_KEEPALIVE_MS}ms`,
-  );
+  console.log('[whatsapp-worker] Baileys 6.x mínimo (sin parche de presencia)');
   console.log('[whatsapp-worker] Vincular: GET /pair?token=...');
   startBaileys().catch((err) => {
     console.error('[whatsapp-worker] init:', err.message);
