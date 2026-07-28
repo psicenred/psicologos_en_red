@@ -1,63 +1,95 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 function isMobileViewport(): boolean {
   if (typeof window === 'undefined') return false;
   return (
     /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
       navigator.userAgent,
-    ) || window.innerWidth <= 768
+    ) || window.matchMedia('(max-width: 768px)').matches
   );
 }
 
-function isNativeFullscreen(): boolean {
-  if (typeof document === 'undefined') return false;
-  return !!(document.fullscreenElement || (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement);
+function getFullscreenElement(): Element | null {
+  if (typeof document === 'undefined') return null;
+  const doc = document as Document & { webkitFullscreenElement?: Element | null };
+  return document.fullscreenElement || doc.webkitFullscreenElement || null;
 }
 
+function requestNativeFullscreen(el: HTMLElement): boolean {
+  const htmlEl = el as HTMLElement & {
+    webkitRequestFullscreen?: () => void | Promise<void>;
+    webkitRequestFullScreen?: () => void | Promise<void>;
+  };
+  const req =
+    el.requestFullscreen?.bind(el) ||
+    htmlEl.webkitRequestFullscreen?.bind(el) ||
+    htmlEl.webkitRequestFullScreen?.bind(el);
+  if (!req) return false;
+  try {
+    void req();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function exitNativeFullscreen(): void {
+  const doc = document as Document & {
+    webkitExitFullscreen?: () => void | Promise<void>;
+    webkitCancelFullScreen?: () => void | Promise<void>;
+  };
+  const exit =
+    document.exitFullscreen?.bind(document) ||
+    doc.webkitExitFullscreen?.bind(document) ||
+    doc.webkitCancelFullScreen?.bind(document);
+  try {
+    void exit?.();
+  } catch {
+    // ignore
+  }
+}
+
+function bumpLayout(): void {
+  requestAnimationFrame(() => {
+    window.dispatchEvent(new Event('resize'));
+  });
+}
+
+/**
+ * Pantalla completa para videollamada.
+ * En móvil usa pseudo-fullscreen (CSS) porque iOS no soporta requestFullscreen en divs.
+ */
 export function useVideoFullscreen(containerRef: React.RefObject<HTMLElement | null>) {
   const [pseudoFs, setPseudoFs] = useState(false);
-  const closeBtnRef = useRef<HTMLButtonElement | null>(null);
+  const [nativeFs, setNativeFs] = useState(false);
 
-  const isFullscreen = pseudoFs || isNativeFullscreen();
+  const isFullscreen = pseudoFs || nativeFs;
 
-  const removeCloseButton = useCallback(() => {
-    closeBtnRef.current?.remove();
-    closeBtnRef.current = null;
+  const clearPseudo = useCallback(() => {
+    document.body.classList.remove('video-pseudo-fullscreen');
+    document.documentElement.classList.remove('video-pseudo-fullscreen');
+    setPseudoFs(false);
+  }, []);
+
+  const enterPseudoFullscreen = useCallback(() => {
+    document.documentElement.classList.add('video-pseudo-fullscreen');
+    document.body.classList.add('video-pseudo-fullscreen');
+    setPseudoFs(true);
+    bumpLayout();
   }, []);
 
   const exitFullscreen = useCallback(() => {
-    if (isNativeFullscreen()) {
-      const doc = document as Document & { webkitExitFullscreen?: () => Promise<void> };
-      (document.exitFullscreen || doc.webkitExitFullscreen)?.call(document);
+    if (getFullscreenElement()) {
+      exitNativeFullscreen();
     }
-    if (pseudoFs) {
-      document.body.classList.remove('video-pseudo-fullscreen');
-      setPseudoFs(false);
-      removeCloseButton();
-    }
-  }, [pseudoFs, removeCloseButton]);
-
-  const enterPseudoFullscreen = useCallback(() => {
-    document.body.classList.add('video-pseudo-fullscreen');
-    setPseudoFs(true);
-
-    const cont = containerRef.current;
-    if (!cont || closeBtnRef.current) return;
-
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'jitsi-fs-cerrar';
-    btn.setAttribute('aria-label', 'Salir de pantalla completa');
-    btn.innerHTML = '✕';
-    btn.addEventListener('click', exitFullscreen);
-    cont.appendChild(btn);
-    closeBtnRef.current = btn;
-  }, [containerRef, exitFullscreen]);
+    clearPseudo();
+    bumpLayout();
+  }, [clearPseudo]);
 
   const toggleFullscreen = useCallback(() => {
-    if (isFullscreen) {
+    if (pseudoFs || getFullscreenElement()) {
       exitFullscreen();
       return;
     }
@@ -65,28 +97,36 @@ export function useVideoFullscreen(containerRef: React.RefObject<HTMLElement | n
     const el = containerRef.current;
     if (!el) return;
 
+    // Móvil / iOS: siempre pseudo-fullscreen
     if (isMobileViewport()) {
       enterPseudoFullscreen();
       return;
     }
 
-    const htmlEl = el as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> };
-    (el.requestFullscreen || htmlEl.webkitRequestFullscreen)?.call(el);
-  }, [containerRef, enterPseudoFullscreen, exitFullscreen, isFullscreen]);
+    // Desktop: API nativa; si falla, fallback CSS
+    const ok = requestNativeFullscreen(el);
+    if (!ok) {
+      enterPseudoFullscreen();
+    }
+  }, [containerRef, enterPseudoFullscreen, exitFullscreen, pseudoFs]);
 
   useEffect(() => {
     function onFullscreenChange() {
-      if (!isNativeFullscreen()) {
-        removeCloseButton();
+      const active = !!getFullscreenElement();
+      setNativeFs(active);
+      if (!active) {
+        // Si salió del nativo, asegurar limpieza de pseudo
+        clearPseudo();
       }
+      bumpLayout();
     }
 
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape' && isFullscreen) {
-        e.preventDefault();
-        e.stopPropagation();
-        exitFullscreen();
-      }
+      if (e.key !== 'Escape') return;
+      if (!pseudoFs && !getFullscreenElement()) return;
+      e.preventDefault();
+      e.stopPropagation();
+      exitFullscreen();
     }
 
     document.addEventListener('fullscreenchange', onFullscreenChange);
@@ -98,12 +138,13 @@ export function useVideoFullscreen(containerRef: React.RefObject<HTMLElement | n
       document.removeEventListener('webkitfullscreenchange', onFullscreenChange);
       document.removeEventListener('keydown', onKeyDown, true);
       document.body.classList.remove('video-pseudo-fullscreen');
-      removeCloseButton();
+      document.documentElement.classList.remove('video-pseudo-fullscreen');
     };
-  }, [exitFullscreen, isFullscreen, removeCloseButton]);
+  }, [clearPseudo, exitFullscreen, pseudoFs]);
 
   return {
     toggleFullscreen,
+    exitFullscreen,
     isFullscreen,
     buttonLabel: isFullscreen ? '✕ Salir de pantalla completa' : '⛶ Pantalla completa',
   };

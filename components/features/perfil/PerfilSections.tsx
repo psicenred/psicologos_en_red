@@ -449,7 +449,8 @@ export function PerfilVideoSection({
   onLeave: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { toggleFullscreen, buttonLabel } = useVideoFullscreen(containerRef);
+  const { toggleFullscreen, exitFullscreen, isFullscreen, buttonLabel } =
+    useVideoFullscreen(containerRef);
 
   return (
     <div className="seccion-panel" id="seccion-video">
@@ -474,6 +475,26 @@ export function PerfilVideoSection({
             Selecciona una cita y pulsa «Unirse» para iniciar la videollamada.
           </p>
         )}
+        {isFullscreen ? (
+          <button
+            type="button"
+            className="jitsi-fs-cerrar"
+            aria-label="Salir de pantalla completa"
+            onClick={exitFullscreen}
+          >
+            ✕
+          </button>
+        ) : null}
+        {!isFullscreen ? (
+          <button
+            type="button"
+            className="jitsi-fs-abrir-mobile"
+            aria-label="Pantalla completa"
+            onClick={toggleFullscreen}
+          >
+            ⛶
+          </button>
+        ) : null}
       </div>
     </div>
   );

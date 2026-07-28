@@ -37,7 +37,14 @@ export function DailyRoom({
 
       const frame = Daily.createFrame(container, {
         showLeaveButton: true,
-        iframeStyle: { width: '100%', height: '100%', border: '0', borderRadius: '8px' },
+        iframeStyle: {
+          width: '100%',
+          height: '100%',
+          border: '0',
+          borderRadius: '8px',
+          position: 'absolute',
+          inset: '0',
+        },
       }) as DailyFrame;
 
       frameRef.current = frame;
@@ -60,8 +67,8 @@ export function DailyRoom({
   return (
     <div
       ref={containerRef}
-      className="h-full min-h-[min(70vh,600px)] w-full overflow-hidden rounded-lg bg-black"
-      style={{ height: '100%', minHeight: 'min(70vh, 600px)' }}
+      className="daily-room-root relative h-full w-full overflow-hidden rounded-lg bg-black"
+      style={{ height: '100%', minHeight: '100%' }}
     />
   );
 }

@@ -352,7 +352,8 @@ export function DoctorVideoSection({
   onNotasSaved?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { toggleFullscreen, buttonLabel } = useVideoFullscreen(containerRef);
+  const { toggleFullscreen, exitFullscreen, isFullscreen, buttonLabel } =
+    useVideoFullscreen(containerRef);
   const [notas, setNotas] = useState(citaSeleccionada?.notas || '');
   const [guardado, setGuardado] = useState(false);
 
@@ -402,6 +403,26 @@ export function DoctorVideoSection({
             Selecciona una cita y pulsa «Iniciar Sesión».
           </p>
         )}
+        {isFullscreen ? (
+          <button
+            type="button"
+            className="jitsi-fs-cerrar"
+            aria-label="Salir de pantalla completa"
+            onClick={exitFullscreen}
+          >
+            ✕
+          </button>
+        ) : null}
+        {!isFullscreen ? (
+          <button
+            type="button"
+            className="jitsi-fs-abrir-mobile"
+            aria-label="Pantalla completa"
+            onClick={toggleFullscreen}
+          >
+            ⛶
+          </button>
+        ) : null}
       </div>
 
       <div className="dash-card" style={{ marginTop: 15 }}>
