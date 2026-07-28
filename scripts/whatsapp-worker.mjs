@@ -182,6 +182,8 @@ async function startBaileys() {
     },
     browser: ['Psicologos en Red', 'Chrome', '1.0.0'],
     syncFullHistory: false,
+    // Evita presencia "available": WhatsApp silencia pushes del teléfono si el companion está online.
+    markOnlineOnConnect: false,
   });
 
   sock.ev.on('creds.update', saveCreds);
