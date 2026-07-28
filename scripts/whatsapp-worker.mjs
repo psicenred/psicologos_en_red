@@ -257,6 +257,10 @@ async function startBaileys() {
     markOnlineOnConnect: false,
   });
 
+  console.log(
+    '[whatsapp-worker] markOnlineOnConnect=false → passive IQ al login (parche Baileys)',
+  );
+
   sock.ev.on('creds.update', saveCreds);
 
   sock.ev.on('connection.update', (update) => {
