@@ -562,7 +562,16 @@ export async function crearSesionPago(
       : `${baseUrl}/perfil?pago=exito`;
 
   // Primera cita gratis: 0 historial de citas (cualquier estado).
-  const freeResult = await withTransaction(async (client) => {
+  type FreeTxResult =
+    | null
+    | { error: string; status: number }
+    | {
+        gratis: true;
+        id: number;
+        fecha_hora_utc: Date | string | null;
+      };
+
+  const freeResult = await withTransaction(async (client): Promise<FreeTxResult> => {
     await client.query('SELECT pg_advisory_xact_lock($1)', [params.pacienteId]);
 
     const countCitas = await client.query<{ n: number }>(
@@ -580,7 +589,7 @@ export async function crearSesionPago(
         error:
           'Para tu primera cita de terapia individual es obligatorio indicar el motivo de consulta (máximo 200 caracteres).',
         status: 400,
-      } as const;
+      };
     }
 
     const motivoDeConsulta = motivoTrim ? motivoTrim.slice(0, 200) : null;
@@ -683,11 +692,11 @@ export async function crearSesionPago(
       return {
         error: 'No se pudo crear la cita gratuita. Intenta de nuevo.',
         status: 500,
-      } as const;
+      };
     }
 
     return {
-      gratis: true as const,
+      gratis: true,
       id: insertResult.rows[0].id,
       fecha_hora_utc: insertResult.rows[0].fecha_hora_utc,
     };
@@ -697,7 +706,7 @@ export async function crearSesionPago(
     return { error: freeResult.error, status: freeResult.status };
   }
 
-  if (freeResult && freeResult.gratis) {
+  if (freeResult?.gratis) {
     await procesarPrimeraCitaReferido(params.pacienteId);
     try {
       const raw = freeResult.fecha_hora_utc;

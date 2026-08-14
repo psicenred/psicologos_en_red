@@ -70,7 +70,14 @@ export async function POST(request: Request) {
       });
     }
 
-    return NextResponse.json({ url: result.url });
+    if ('url' in result) {
+      return NextResponse.json({ url: result.url });
+    }
+
+    return NextResponse.json(
+      { error: 'No se pudo iniciar el pago. Intenta de nuevo.' },
+      { status: 500 },
+    );
   } catch (error) {
     console.error('POST crear-sesion-pago:', error);
     return NextResponse.json(
