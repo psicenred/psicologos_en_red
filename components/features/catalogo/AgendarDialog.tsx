@@ -174,7 +174,12 @@ export function AgendarDialog({
         setError(data.error || t('paymentStartError'));
         return;
       }
+      if (data.gratis && data.redirect) {
+        window.location.href = data.redirect;
+        return;
+      }
       if (data.url) window.location.href = data.url;
+      else setError(t('paymentStartError'));
     } catch {
       setError(t('paymentStartError'));
     } finally {
@@ -190,7 +195,7 @@ export function AgendarDialog({
     serviciosDisponibles.length > 0 &&
     !loading &&
     loggedIn === true &&
-    !region?.regionUnknown;
+    (esPacienteNuevo || !region?.regionUnknown);
 
   if (!open || !mounted) return null;
 
@@ -273,6 +278,12 @@ export function AgendarDialog({
                 onRecomendadoChange={setRecomendadoPor}
               />
 
+              {esPacienteNuevo ? (
+                <p className="gestion-cita-precio-sesion" style={{ marginTop: 12 }}>
+                  {t('firstSessionFree')}
+                </p>
+              ) : null}
+
               {error ? <p className="gestion-cita-error">{error}</p> : null}
             </div>
 
@@ -290,7 +301,13 @@ export function AgendarDialog({
                 disabled={!canSubmit}
                 onClick={confirmar}
               >
-                {loading ? t('redirectingPay') : t('continuePay')}
+                {loading
+                  ? esPacienteNuevo
+                    ? t('bookingFree')
+                    : t('redirectingPay')
+                  : esPacienteNuevo
+                    ? t('continueFree')
+                    : t('continuePay')}
               </button>
             </div>
           </>

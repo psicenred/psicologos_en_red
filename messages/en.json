@@ -213,7 +213,11 @@
     "motivoOtroRequired": "Please write your reason for consultation.",
     "paymentStartError": "Could not start payment. Please try again.",
     "continuePay": "Confirm booking",
+    "continueFree": "Book for free",
     "redirectingPay": "Redirecting to payment…",
+    "bookingFree": "Booking your free session…",
+    "firstSessionFree": "Your first session is free.",
+    "freeRibbon": "Your first appointment is free!",
     "schedule": "Time slot",
     "noSlots": "No slots available for this date.",
     "dbUnavailable": "We couldn't load the catalog. Check that DATABASE_URL is set in .env and restart the dev server."

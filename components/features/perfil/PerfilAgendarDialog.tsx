@@ -37,6 +37,7 @@ export function PerfilAgendarDialog({
   const servicio = servicioInteresOrDefault(servicioInteres);
   const [fecha, setFecha] = useState<Date | undefined>();
   const [hora, setHora] = useState('');
+  const [esPacienteNuevo, setEsPacienteNuevo] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [currency, setCurrency] = useState<string | undefined>();
@@ -50,8 +51,14 @@ export function PerfilAgendarDialog({
       setCurrency(undefined);
       setPricing(null);
       setLoading(false);
+      setEsPacienteNuevo(false);
       return;
     }
+
+    fetch('/api/soy-paciente-nuevo', { credentials: 'same-origin' })
+      .then((r) => r.json())
+      .then((data: { nuevo?: boolean }) => setEsPacienteNuevo(data.nuevo === true))
+      .catch(() => setEsPacienteNuevo(false));
 
     fetchPrecioRegionClient()
       .then((region) => {
@@ -115,6 +122,10 @@ export function PerfilAgendarDialog({
         setLoading(false);
         return;
       }
+      if (data.gratis && data.redirect) {
+        window.location.href = data.redirect;
+        return;
+      }
       if (data.url) {
         window.location.href = data.url;
         return;
@@ -149,7 +160,11 @@ export function PerfilAgendarDialog({
         ) : null}
 
         <p className="cita-tipo-sesion-label">{formatEtiquetaSesion(servicio)}</p>
-        {precioSesion != null && currency ? (
+        {esPacienteNuevo ? (
+          <p className="gestion-cita-precio-sesion">
+            Tu primera sesión es gratis.
+          </p>
+        ) : precioSesion != null && currency ? (
           <p className="gestion-cita-precio-sesion">
             Precio de esta sesión:{' '}
             <strong>
@@ -179,7 +194,13 @@ export function PerfilAgendarDialog({
             disabled={!fecha || !hora || loading}
             onClick={confirmar}
           >
-            {loading ? 'Redirigiendo a pago…' : 'Confirmar reservación'}
+            {loading
+              ? esPacienteNuevo
+                ? 'Agendando tu sesión gratis…'
+                : 'Redirigiendo a pago…'
+              : esPacienteNuevo
+                ? 'Agendar gratis'
+                : 'Confirmar reservación'}
           </button>
         </div>
       </div>

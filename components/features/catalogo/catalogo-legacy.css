@@ -2,6 +2,145 @@
 .catalogo-agendar-overlay {
   z-index: 10001;
 }
+
+/* Listón sticky: primera cita gratis (bajo el header, entre hero y listado) */
+.catalogo-free-ribbon {
+  position: sticky;
+  top: 4.75rem;
+  z-index: 900;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  padding: 0.65rem 5%;
+  margin: -1.1rem 0 -0.35rem;
+  background: transparent;
+}
+
+.catalogo-free-ribbon-inner {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: min(92vw, 28rem);
+  padding: 0.55rem 2.75rem;
+  color: #fff;
+  font-weight: 700;
+  font-size: clamp(0.85rem, 2.4vw, 1.05rem);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 0 rgba(90, 40, 55, 0.25);
+  background: linear-gradient(
+    105deg,
+    #c45a82 0%,
+    var(--primario-rosa, #ed87af) 35%,
+    #f0a0c0 50%,
+    var(--primario-rosa, #ed87af) 65%,
+    #c45a82 100%
+  );
+  background-size: 200% 100%;
+  box-shadow:
+    0 4px 14px rgba(196, 90, 130, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -2px 0 rgba(140, 50, 80, 0.2);
+  clip-path: polygon(
+    0 50%,
+    1.1rem 0,
+    calc(100% - 1.1rem) 0,
+    100% 50%,
+    calc(100% - 1.1rem) 100%,
+    1.1rem 100%
+  );
+  transform-origin: 50% 40%;
+  animation:
+    catalogo-ribbon-wind 3.8s ease-in-out infinite,
+    catalogo-ribbon-sheen 5.5s linear infinite;
+}
+
+.catalogo-free-ribbon-inner::before,
+.catalogo-free-ribbon-inner::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  width: 0.85rem;
+  height: 0.7rem;
+  background: #9a3d62;
+  z-index: -1;
+}
+
+.catalogo-free-ribbon-inner::before {
+  left: 1.05rem;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+.catalogo-free-ribbon-inner::after {
+  right: 1.05rem;
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+
+.catalogo-free-ribbon-text {
+  position: relative;
+  z-index: 1;
+  white-space: nowrap;
+}
+
+@keyframes catalogo-ribbon-wind {
+  0% {
+    transform: perspective(700px) rotateX(0deg) rotateZ(-0.6deg) skewX(-0.4deg) translate3d(0, 0, 0);
+  }
+  18% {
+    transform: perspective(700px) rotateX(3deg) rotateZ(0.9deg) skewX(0.8deg) translate3d(2px, -2px, 0);
+  }
+  36% {
+    transform: perspective(700px) rotateX(-1.5deg) rotateZ(-1.1deg) skewX(-1deg) translate3d(-3px, 1px, 0);
+  }
+  55% {
+    transform: perspective(700px) rotateX(2.2deg) rotateZ(0.5deg) skewX(0.5deg) translate3d(2px, -1px, 0);
+  }
+  74% {
+    transform: perspective(700px) rotateX(-2deg) rotateZ(-0.8deg) skewX(-0.6deg) translate3d(-1px, 2px, 0);
+  }
+  100% {
+    transform: perspective(700px) rotateX(0deg) rotateZ(-0.6deg) skewX(-0.4deg) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes catalogo-ribbon-sheen {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catalogo-free-ribbon-inner {
+    animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .catalogo-free-ribbon {
+    top: 4.25rem;
+    padding-left: 3%;
+    padding-right: 3%;
+  }
+
+  .catalogo-free-ribbon-inner {
+    min-width: 0;
+    width: 100%;
+    max-width: 22rem;
+    padding: 0.5rem 2.1rem;
+    letter-spacing: 0.02em;
+  }
+
+  .catalogo-free-ribbon-text {
+    white-space: normal;
+    text-align: center;
+    line-height: 1.25;
+  }
+}
+
 /* ========== CATÁLOGO MODERNO (estilo index) ========== */
 .catalogo-hero {
  position: relative;

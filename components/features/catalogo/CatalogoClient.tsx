@@ -466,6 +466,12 @@ export function CatalogoClient() {
         </div>
       </section>
 
+      <div className="catalogo-free-ribbon" role="status" aria-live="polite">
+        <div className="catalogo-free-ribbon-inner">
+          <span className="catalogo-free-ribbon-text">{t('freeRibbon')}</span>
+        </div>
+      </div>
+
       <section className="catalogo-section-wrap">
         <h2 className="catalogo-section-title">{t('sectionTitle')}</h2>
         <p className="catalogo-section-desc">{t('sectionDesc')}</p>

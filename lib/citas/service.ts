@@ -1,5 +1,5 @@
 import { getBaseUrl } from '@/lib/config';
-import { query } from '@/lib/db';
+import { query, withTransaction } from '@/lib/db';
 import { getPrecioRegionAsync } from '@/lib/geo';
 import { getStripe } from '@/lib/stripe';
 import { SQL_CITA_INSTANT_C, ZONA_HORARIA_CITA_SQL } from '@/lib/citas/cita-timing';
@@ -523,20 +523,16 @@ export async function crearSesionPago(
     recomendadoPor?: string;
     pacienteZonaHoraria?: string;
   },
-): Promise<{ url: string } | { error: string; status: number; code?: string }> {
+): Promise<
+  | { url: string }
+  | { gratis: true; redirect: string }
+  | { error: string; status: number; code?: string }
+> {
   if (params.pacienteZonaHoraria) {
     await guardarZonaHorariaPaciente(
       params.pacienteId,
       params.pacienteZonaHoraria,
     );
-  }
-
-  const stripe = getStripe();
-  if (!stripe || !process.env.STRIPE_SECRET_KEY) {
-    return {
-      error: 'Pagos no configurados. Contacta al administrador.',
-      status: 503,
-    };
   }
 
   const servicioNorm = normalizeServicioInteres(params.servicioInteres);
@@ -547,22 +543,8 @@ export async function crearSesionPago(
     };
   }
 
+  const motivoTrim = params.motivoDeConsulta?.trim() || '';
   const servicioLower = servicioNorm.toLowerCase();
-  if (servicioLower.includes('individual')) {
-    const countCitas = await query(
-      'SELECT 1 FROM citas WHERE paciente_id = $1 LIMIT 1',
-      [params.pacienteId],
-    );
-    const esPacienteNuevo = countCitas.rows.length === 0;
-    const motivoTrim = params.motivoDeConsulta?.trim() || '';
-    if (esPacienteNuevo && (!motivoTrim || motivoTrim.length > 200)) {
-      return {
-        error:
-          'Para tu primera cita de terapia individual es obligatorio indicar el motivo de consulta (máximo 200 caracteres).',
-        status: 400,
-      };
-    }
-  }
 
   const slot = await validateSlotAvailable(
     params.psicologoId,
@@ -570,6 +552,183 @@ export async function crearSesionPago(
     params.hora,
   );
   if (!slot.ok) return { error: slot.error, status: slot.status };
+
+  const baseUrl = getBaseUrl();
+  const successRedirect =
+    params.successUrl &&
+    typeof params.successUrl === 'string' &&
+    params.successUrl.startsWith(baseUrl)
+      ? params.successUrl
+      : `${baseUrl}/perfil?pago=exito`;
+
+  // Primera cita gratis: 0 historial de citas (cualquier estado).
+  const freeResult = await withTransaction(async (client) => {
+    await client.query('SELECT pg_advisory_xact_lock($1)', [params.pacienteId]);
+
+    const countCitas = await client.query<{ n: number }>(
+      'SELECT COUNT(*)::int AS n FROM citas WHERE paciente_id = $1',
+      [params.pacienteId],
+    );
+    const totalCitas = countCitas.rows[0]?.n ?? 0;
+    if (totalCitas > 0) return null;
+
+    if (
+      servicioLower.includes('individual') &&
+      (!motivoTrim || motivoTrim.length > 200)
+    ) {
+      return {
+        error:
+          'Para tu primera cita de terapia individual es obligatorio indicar el motivo de consulta (máximo 200 caracteres).',
+        status: 400,
+      } as const;
+    }
+
+    const motivoDeConsulta = motivoTrim ? motivoTrim.slice(0, 200) : null;
+    const origenConocimiento =
+      (params.origenConocimiento &&
+        String(params.origenConocimiento).trim().slice(0, 80)) ||
+      null;
+    const recomendadoPor =
+      (params.recomendadoPor &&
+        String(params.recomendadoPor).trim().slice(0, 200)) ||
+      null;
+
+    const insertParams = [
+      params.pacienteId,
+      params.psicologoId,
+      params.fecha,
+      params.hora,
+      linkSesion(params.pacienteId, params.psicologoId),
+      motivoDeConsulta,
+      origenConocimiento,
+      recomendadoPor,
+      servicioNorm,
+    ];
+
+    let insertResult;
+    try {
+      insertResult = await client.query<{
+        id: number;
+        fecha_hora_utc: Date | string | null;
+      }>(
+        `INSERT INTO citas (
+           paciente_id, psicologo_id, fecha, hora, link_sesion, estado,
+           zona_horaria, fecha_hora_utc,
+           motivo_de_consulta, origen_conocimiento, recomendado_por, servicio_interes,
+           es_primera_gratis, contabilidad_es_prueba, monto_original, monto_final
+         )
+         SELECT $1, $2, $3::date, $4::time, $5, 'pendiente',
+           CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
+                ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END,
+           (($3::date + $4::time) AT TIME ZONE (CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
+                ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END))::timestamptz::text,
+           $6, $7, $8, $9,
+           true, true, 0, 0
+         FROM psicologos p WHERE p.id = $2
+         RETURNING id, fecha_hora_utc`,
+        insertParams,
+      );
+    } catch (err) {
+      const msg = (err as Error).message || '';
+      if (
+        !msg.includes('es_primera_gratis') &&
+        !msg.includes('contabilidad_es_prueba') &&
+        !msg.includes('monto_original') &&
+        !msg.includes('monto_final') &&
+        !msg.includes('does not exist')
+      ) {
+        throw err;
+      }
+      insertResult = await client.query<{
+        id: number;
+        fecha_hora_utc: Date | string | null;
+      }>(
+        `INSERT INTO citas (
+           paciente_id, psicologo_id, fecha, hora, link_sesion, estado,
+           zona_horaria, fecha_hora_utc,
+           motivo_de_consulta, origen_conocimiento, recomendado_por, servicio_interes
+         )
+         SELECT $1, $2, $3::date, $4::time, $5, 'pendiente',
+           CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
+                ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END,
+           (($3::date + $4::time) AT TIME ZONE (CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
+                ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END))::timestamptz::text,
+           $6, $7, $8, $9
+         FROM psicologos p WHERE p.id = $2
+         RETURNING id, fecha_hora_utc`,
+        insertParams,
+      );
+      const newId = insertResult.rows[0]?.id;
+      if (newId) {
+        try {
+          await client.query(
+            `UPDATE citas SET es_primera_gratis = true, contabilidad_es_prueba = true,
+              monto_original = 0, monto_final = 0 WHERE id = $1`,
+            [newId],
+          );
+        } catch {
+          try {
+            await client.query(
+              `UPDATE citas SET contabilidad_es_prueba = true WHERE id = $1`,
+              [newId],
+            );
+          } catch {
+            /* columnas opcionales */
+          }
+        }
+      }
+    }
+
+    if (!insertResult.rows[0]?.id) {
+      return {
+        error: 'No se pudo crear la cita gratuita. Intenta de nuevo.',
+        status: 500,
+      } as const;
+    }
+
+    return {
+      gratis: true as const,
+      id: insertResult.rows[0].id,
+      fecha_hora_utc: insertResult.rows[0].fecha_hora_utc,
+    };
+  });
+
+  if (freeResult && 'error' in freeResult) {
+    return { error: freeResult.error, status: freeResult.status };
+  }
+
+  if (freeResult && freeResult.gratis) {
+    await procesarPrimeraCitaReferido(params.pacienteId);
+    try {
+      const raw = freeResult.fecha_hora_utc;
+      const fechaHoraUtc =
+        raw == null || String(raw).trim() === ''
+          ? null
+          : raw instanceof Date
+            ? raw.toISOString()
+            : String(raw);
+      await enviarCorreosCitaAgendada(
+        params.pacienteId,
+        params.psicologoId,
+        params.fecha,
+        params.hora,
+        freeResult.id,
+        fechaHoraUtc,
+      );
+    } catch (e) {
+      console.error('Error enviando correos cita gratis:', e);
+    }
+    return { gratis: true, redirect: successRedirect };
+  }
+
+  // Paciente con historial → pago Stripe
+  const stripe = getStripe();
+  if (!stripe || !process.env.STRIPE_SECRET_KEY) {
+    return {
+      error: 'Pagos no configurados. Contacta al administrador.',
+      status: 503,
+    };
+  }
 
   const region =
     params.currency === 'USD' || params.currency === 'MXN'
@@ -601,7 +760,6 @@ export async function crearSesionPago(
     return { error: 'Psicólogo no encontrado', status: 400 };
   }
 
-  const baseUrl = getBaseUrl();
   const successUrl =
     params.successUrl &&
     typeof params.successUrl === 'string' &&

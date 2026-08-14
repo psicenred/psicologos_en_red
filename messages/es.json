@@ -213,7 +213,11 @@
     "motivoOtroRequired": "Por favor escribe tu motivo de consulta.",
     "paymentStartError": "No se pudo iniciar el pago. Intenta de nuevo.",
     "continuePay": "Confirmar Reservación",
+    "continueFree": "Agendar gratis",
     "redirectingPay": "Redirigiendo a pago…",
+    "bookingFree": "Agendando tu sesión gratis…",
+    "firstSessionFree": "Tu primera sesión es gratis.",
+    "freeRibbon": "¡Tu primera cita es gratis!",
     "schedule": "Horario",
     "noSlots": "Sin horarios para esta fecha.",
     "dbUnavailable": "No pudimos cargar el catálogo. Verifica que DATABASE_URL esté configurada en .env y reinicia el servidor."

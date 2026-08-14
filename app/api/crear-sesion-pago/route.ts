@@ -63,6 +63,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if ('gratis' in result && result.gratis) {
+      return NextResponse.json({
+        gratis: true,
+        redirect: result.redirect,
+      });
+    }
+
     return NextResponse.json({ url: result.url });
   } catch (error) {
     console.error('POST crear-sesion-pago:', error);

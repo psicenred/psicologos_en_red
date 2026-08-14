@@ -57,6 +57,33 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
   return getPool().query<T>(text, params);
 }
 
+/** Ejecuta trabajo en una transacción (COMMIT / ROLLBACK). */
+export async function withTransaction<T>(
+  fn: (client: {
+    query: <R extends QueryResultRow = QueryResultRow>(
+      text: string,
+      params?: unknown[],
+    ) => Promise<QueryResult<R>>;
+  }) => Promise<T>,
+): Promise<T> {
+  const client = await getPool().connect();
+  try {
+    await client.query('BEGIN');
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      /* ignore */
+    }
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 /** Comprueba conexión sin lanzar si falta DATABASE_URL. */
 export function isDatabaseConfigured(): boolean {
   return Boolean(
