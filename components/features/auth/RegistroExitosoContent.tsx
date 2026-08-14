@@ -1,10 +1,12 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ResendVerificationForm } from '@/components/features/auth/ResendVerificationForm';
+import { trackMetaEvent } from '@/lib/analytics/meta-pixel';
 
 type RegistroExitosoContentProps = {
   initialEmail?: string;
@@ -12,6 +14,10 @@ type RegistroExitosoContentProps = {
 
 export function RegistroExitosoContent({ initialEmail = '' }: RegistroExitosoContentProps) {
   const t = useTranslations('auth');
+
+  useEffect(() => {
+    trackMetaEvent('CompleteRegistration');
+  }, []);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50 p-4">

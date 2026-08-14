@@ -11,6 +11,7 @@ import { fetchPrecioRegionClient } from '@/lib/geo-client';
 import { minSessionPrice } from '@/lib/catalog-pricing';
 import { asStringArray } from '@/lib/pg-arrays';
 import { PRECIOS_DEFAULT_MXN, PRECIOS_DEFAULT_USD } from '@/lib/geo';
+import { trackMetaEvent } from '@/lib/analytics/meta-pixel';
 import '../home/index-legacy.css';
 import './catalogo-legacy.css';
 
@@ -369,6 +370,7 @@ export function CatalogoClient() {
 
   useEffect(() => {
     if (searchParams.get('pago') === 'exito') {
+      trackMetaEvent('Schedule');
       window.alert(t('paymentSuccess'));
       window.history.replaceState({}, '', window.location.pathname);
     }

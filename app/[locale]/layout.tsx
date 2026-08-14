@@ -1,6 +1,8 @@
+import { Suspense } from 'react';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import { MetaPixel } from '@/components/analytics/MetaPixel';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import { RediWidget } from '@/components/features/chat/RediWidget';
 import { routing, type Locale } from '@/i18n/routing';
@@ -30,6 +32,9 @@ export default async function LocaleLayout({ children, params }: Props) {
           <QueryProvider>
             {children}
             <RediWidget />
+            <Suspense fallback={null}>
+              <MetaPixel />
+            </Suspense>
           </QueryProvider>
         </NextIntlClientProvider>
       </body>

@@ -14,6 +14,7 @@ import { type CitaPaciente } from '@/components/features/perfil/perfil-helpers';
 import { mensajesNoLeidosAction } from '@/lib/chat/actions';
 import { fetchApiList, networkErrorMessage } from '@/lib/fetch-api';
 import { useDailyCall } from '@/lib/hooks/useDailyCall';
+import { trackMetaEvent } from '@/lib/analytics/meta-pixel';
 
 type User = {
   id: number;
@@ -79,6 +80,7 @@ export function PerfilApp() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('pago') !== 'exito') return;
 
+    trackMetaEvent('Schedule');
     const sessionId = params.get('session_id');
     window.history.replaceState({}, '', window.location.pathname);
     setSection('citas');
