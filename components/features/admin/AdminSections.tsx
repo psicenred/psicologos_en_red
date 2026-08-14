@@ -11,7 +11,7 @@ import {
   formatHora,
 } from '@/components/features/admin/admin-helpers';
 import { apiErrorMessage } from '@/lib/fetch-api';
-import { updatePsicologoVisibilidadAction, saveAdminVideoConfigAction, updateAdminProfileAction } from '@/lib/admin/actions';
+import { updatePsicologoVisibilidadAction, saveAdminVideoConfigAction } from '@/lib/admin/actions';
 import type { AdminPanelInitialData } from '@/lib/admin/types';
 
 const SERVER_BACKED_QUERY = {
@@ -1021,26 +1021,30 @@ export function AdminConfigSection({
 
   async function guardarPerfil(e: React.FormEvent) {
     e.preventDefault();
-    if (!mutationToken) {
-      setProfileMsg('❌ Sesión expirada. Recarga la página e intenta de nuevo.');
-      return;
-    }
     setSaving(true);
     setProfileMsg('');
     try {
-      const result = await updateAdminProfileAction({
-        mutationToken,
-        nombre,
-        telefono,
-        password: password || undefined,
+      const res = await fetch('/api/update-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          nombre,
+          telefono: telefono || null,
+          ...(password.trim() ? { password: password.trim() } : {}),
+        }),
       });
-      if (result.ok) {
-        setProfileMsg('✅ Perfil actualizado');
-        setEditing(false);
-        setPassword('');
-      } else {
-        setProfileMsg(`❌ ${result.error}`);
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setProfileMsg(`❌ ${data.error || 'Error al actualizar el perfil'}`);
+        return;
       }
+      setProfileMsg('✅ Perfil actualizado');
+      setEditing(false);
+      setPassword('');
+    } catch (err) {
+      console.error('guardarPerfil:', err);
+      setProfileMsg('❌ Error de conexión con el servidor. Recarga e intenta de nuevo.');
     } finally {
       setSaving(false);
     }
@@ -1137,6 +1141,7 @@ export function AdminConfigSection({
               type="tel"
               readOnly={!editing}
               placeholder="No registrado"
+              maxLength={20}
               value={telefono || ''}
               onChange={(e) => setTelefono(e.target.value)}
               style={{
@@ -1148,6 +1153,9 @@ export function AdminConfigSection({
                 boxSizing: 'border-box',
               }}
             />
+            {editing ? (
+              <small style={{ color: '#888', fontSize: '0.8rem' }}>Máximo 20 caracteres</small>
+            ) : null}
           </div>
 
           {editing ? (

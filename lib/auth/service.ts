@@ -474,35 +474,84 @@ export type UpdateProfileInput = {
   password?: string;
 };
 
+const NOMBRE_MAX = 100;
+/** Debe coincidir con usuarios.telefono (varchar). */
+const TELEFONO_MAX = 20;
+
+function mapProfileDbError(error: unknown): string {
+  const msg = error instanceof Error ? error.message : String(error);
+  if (/varying\(20\)|telefono/i.test(msg) && /too long|value too long/i.test(msg)) {
+    return `El teléfono es demasiado largo (máximo ${TELEFONO_MAX} caracteres).`;
+  }
+  if (/varying\(100\)|nombre/i.test(msg) && /too long|value too long/i.test(msg)) {
+    return `El nombre es demasiado largo (máximo ${NOMBRE_MAX} caracteres).`;
+  }
+  if (/value too long/i.test(msg)) {
+    return 'Uno de los campos supera el límite permitido.';
+  }
+  return 'Error al actualizar el perfil';
+}
+
 export async function updateUsuarioProfile(
   usuarioId: number,
   currentNombre: string,
   input: UpdateProfileInput,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const nombre = input.nombre?.trim() || currentNombre;
-  const telefono = input.telefono?.trim() || null;
+  const nombre = (input.nombre?.trim() || currentNombre).slice(0, NOMBRE_MAX);
+  if (!nombre) {
+    return { ok: false, error: 'El nombre es obligatorio.' };
+  }
+
+  const telefonoRaw = input.telefono?.trim() || '';
+  if (telefonoRaw.length > TELEFONO_MAX) {
+    return {
+      ok: false,
+      error: `El teléfono es demasiado largo (máximo ${TELEFONO_MAX} caracteres).`,
+    };
+  }
+  const telefono = telefonoRaw || null;
+
+  const touchContacto = input.contacto_emergencia !== undefined;
   const contactoEmerg =
-    input.contacto_emergencia != null && String(input.contacto_emergencia).trim() !== ''
+    touchContacto &&
+    input.contacto_emergencia != null &&
+    String(input.contacto_emergencia).trim() !== ''
       ? String(input.contacto_emergencia).trim().slice(0, 255)
-      : null;
+      : touchContacto
+        ? null
+        : undefined;
   const password = input.password;
+  const changePassword =
+    Boolean(password && password.trim() !== '' && password !== '********');
 
   try {
-    if (password && password.trim() !== '' && password !== '********') {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      await query(
-        'UPDATE usuarios SET nombre = $1, telefono = $2, contacto_emergencia = $3, password = $4 WHERE id = $5',
-        [nombre, telefono, contactoEmerg, hashedPassword, usuarioId],
-      );
-    } else {
+    if (changePassword) {
+      const hashedPassword = await bcrypt.hash(password!.trim(), 10);
+      if (touchContacto) {
+        await query(
+          'UPDATE usuarios SET nombre = $1, telefono = $2, contacto_emergencia = $3, password = $4 WHERE id = $5',
+          [nombre, telefono, contactoEmerg, hashedPassword, usuarioId],
+        );
+      } else {
+        await query(
+          'UPDATE usuarios SET nombre = $1, telefono = $2, password = $3 WHERE id = $4',
+          [nombre, telefono, hashedPassword, usuarioId],
+        );
+      }
+    } else if (touchContacto) {
       await query(
         'UPDATE usuarios SET nombre = $1, telefono = $2, contacto_emergencia = $3 WHERE id = $4',
         [nombre, telefono, contactoEmerg, usuarioId],
+      );
+    } else {
+      await query(
+        'UPDATE usuarios SET nombre = $1, telefono = $2 WHERE id = $3',
+        [nombre, telefono, usuarioId],
       );
     }
     return { ok: true };
   } catch (error) {
     console.error('updateUsuarioProfile:', error);
-    return { ok: false, error: 'Error al actualizar el perfil' };
+    return { ok: false, error: mapProfileDbError(error) };
   }
 }

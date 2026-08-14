@@ -3,8 +3,8 @@ import {
   requireAuthUsuario,
   touchSessionNombre,
 } from '@/lib/auth/api';
+import { updateUsuarioProfile } from '@/lib/auth/service';
 import { isDatabaseConfigured, query } from '@/lib/db';
-import bcrypt from 'bcrypt';
 
 export async function POST(request: Request) {
   if (!isDatabaseConfigured()) {
@@ -21,29 +21,33 @@ export async function POST(request: Request) {
       password?: string;
     };
 
-    const nombre = body.nombre ?? auth.nombre;
-    const telefono = body.telefono ?? null;
-    const contactoEmerg =
-      body.contacto_emergencia != null &&
-      String(body.contacto_emergencia).trim() !== ''
-        ? String(body.contacto_emergencia).trim().slice(0, 255)
-        : null;
-    const password = body.password;
+    const userRow = await query<{ nombre: string }>(
+      'SELECT nombre FROM usuarios WHERE id = $1',
+      [auth.id],
+    );
+    const currentNombre = userRow.rows[0]?.nombre ?? auth.nombre;
 
-    if (password && password.trim() !== '' && password !== '********') {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      await query(
-        'UPDATE usuarios SET nombre = $1, telefono = $2, contacto_emergencia = $3, password = $4 WHERE id = $5',
-        [nombre, telefono, contactoEmerg, hashedPassword, auth.id],
-      );
-    } else {
-      await query(
-        'UPDATE usuarios SET nombre = $1, telefono = $2, contacto_emergencia = $3 WHERE id = $4',
-        [nombre, telefono, contactoEmerg, auth.id],
-      );
+    const input: {
+      nombre: string;
+      telefono?: string | null;
+      contacto_emergencia?: string | null;
+      password?: string;
+    } = {
+      nombre: body.nombre ?? currentNombre,
+      telefono: body.telefono ?? null,
+      password: body.password,
+    };
+
+    if ('contacto_emergencia' in body) {
+      input.contacto_emergencia = body.contacto_emergencia ?? null;
     }
 
-    await touchSessionNombre(nombre);
+    const result = await updateUsuarioProfile(auth.id, currentNombre, input);
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
+    }
+
+    await touchSessionNombre(input.nombre.trim() || currentNombre);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('POST /api/update-profile:', error);

@@ -156,6 +156,16 @@ export async function updateAdminProfileAction(input: {
     return { ok: true, data: { success: true } };
   } catch (error) {
     console.error('updateAdminProfileAction:', error);
-    return { ok: false, error: 'Error al actualizar el perfil' };
+    const msg = error instanceof Error ? error.message : '';
+    if (/SESSION_SECRET/i.test(msg)) {
+      return {
+        ok: false,
+        error: 'Configuración de sesión inválida. Revisa SESSION_SECRET en Vercel.',
+      };
+    }
+    return {
+      ok: false,
+      error: msg && msg.length < 180 ? msg : 'Error al actualizar el perfil',
+    };
   }
 }
