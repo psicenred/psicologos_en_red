@@ -836,6 +836,69 @@
   position: relative;
 }
 
+/* Placeholder cuando el video se mueve al portal (móvil / iOS) */
+.perfil-video-slot {
+  flex: 1;
+  min-height: 70vh;
+  height: 70vh;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+/* Overlay en document.body — escapa overflow de .perfil-main (iOS Safari) */
+.video-fs-portal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  width: 100vw;
+  width: 100dvw;
+  height: 100vh;
+  height: 100svh;
+  height: 100dvh;
+  background: #000;
+  overflow: hidden;
+  padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0)
+    env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+  box-sizing: border-box;
+}
+
+.video-fs-portal-overlay .perfil-video-container,
+.video-fs-portal-overlay #jitsi-container {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+  background: #000 !important;
+}
+
+.video-fs-portal-overlay .daily-room-root,
+.video-fs-portal-overlay #jitsi-container > div {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  border-radius: 0 !important;
+}
+
+.video-fs-portal-overlay iframe {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+
 .btn-pantalla-completa-video {
   padding: 8px 14px;
   background: #1a1a2e;

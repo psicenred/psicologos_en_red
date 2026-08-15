@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-function isMobileViewport(): boolean {
+export function isMobileViewport(): boolean {
   if (typeof window === 'undefined') return false;
   return (
     /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -51,15 +51,19 @@ function exitNativeFullscreen(): void {
   }
 }
 
-function bumpLayout(): void {
+export function bumpVideoLayout(): void {
   requestAnimationFrame(() => {
     window.dispatchEvent(new Event('resize'));
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
   });
 }
 
 /**
  * Pantalla completa para videollamada.
- * En móvil usa pseudo-fullscreen (CSS) porque iOS no soporta requestFullscreen en divs.
+ * En móvil usa pseudo-fullscreen (CSS y/o portal a body) porque iOS
+ * no soporta requestFullscreen en divs.
  */
 export function useVideoFullscreen(containerRef: React.RefObject<HTMLElement | null>) {
   const [pseudoFs, setPseudoFs] = useState(false);
@@ -77,7 +81,7 @@ export function useVideoFullscreen(containerRef: React.RefObject<HTMLElement | n
     document.documentElement.classList.add('video-pseudo-fullscreen');
     document.body.classList.add('video-pseudo-fullscreen');
     setPseudoFs(true);
-    bumpLayout();
+    bumpVideoLayout();
   }, []);
 
   const exitFullscreen = useCallback(() => {
@@ -85,7 +89,7 @@ export function useVideoFullscreen(containerRef: React.RefObject<HTMLElement | n
       exitNativeFullscreen();
     }
     clearPseudo();
-    bumpLayout();
+    bumpVideoLayout();
   }, [clearPseudo]);
 
   const toggleFullscreen = useCallback(() => {
@@ -115,10 +119,9 @@ export function useVideoFullscreen(containerRef: React.RefObject<HTMLElement | n
       const active = !!getFullscreenElement();
       setNativeFs(active);
       if (!active) {
-        // Si salió del nativo, asegurar limpieza de pseudo
         clearPseudo();
       }
-      bumpLayout();
+      bumpVideoLayout();
     }
 
     function onKeyDown(e: KeyboardEvent) {
@@ -146,6 +149,7 @@ export function useVideoFullscreen(containerRef: React.RefObject<HTMLElement | n
     toggleFullscreen,
     exitFullscreen,
     isFullscreen,
+    isPseudoFullscreen: pseudoFs,
     buttonLabel: isFullscreen ? '✕ Salir de pantalla completa' : '⛶ Pantalla completa',
   };
 }

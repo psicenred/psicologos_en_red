@@ -1,10 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { DailyRoom } from '@/components/features/video/DailyRoom';
 import { PrivateChat } from '@/components/features/chat/PrivateChat';
-import { useVideoFullscreen } from '@/lib/hooks/useVideoFullscreen';
+import {
+  bumpVideoLayout,
+  useVideoFullscreen,
+} from '@/lib/hooks/useVideoFullscreen';
+import { VIDEO_MOBILE_FS_USE_PORTAL } from '@/lib/video/fullscreen-flags';
 import { ReagendarDialog } from '@/components/features/citas/ReagendarDialog';
 import { formatEtiquetaSesion } from '@/lib/booking/format-servicio';
 import { PerfilAgendarDialog } from '@/components/features/perfil/PerfilAgendarDialog';
@@ -448,29 +453,63 @@ export function PerfilVideoSection({
   error: string | null;
   onLeave: () => void;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { toggleFullscreen, exitFullscreen, isFullscreen, buttonLabel } =
-    useVideoFullscreen(containerRef);
+  const slotRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const [hostEl] = useState(() => {
+    if (typeof document === 'undefined') return null;
+    const el = document.createElement('div');
+    el.id = 'jitsi-container';
+    el.className = 'perfil-video-container';
+    return el;
+  });
+  const containerRef = useRef<HTMLElement | null>(hostEl);
+  containerRef.current = hostEl;
 
-  return (
-    <div className="seccion-panel" id="seccion-video">
-      <header className="video-header">
-        <div>
-          <h2>Sesión en Vivo</h2>
-          <p id="info-sesion">{infoSesion}</p>
-        </div>
-        <button
-          type="button"
-          className="btn-pantalla-completa-video"
-          title="Pantalla completa"
-          onClick={toggleFullscreen}
-        >
-          {buttonLabel}
-        </button>
-      </header>
-      <div className="perfil-video-container" ref={containerRef} id="jitsi-container">
+  const {
+    toggleFullscreen,
+    exitFullscreen,
+    isFullscreen,
+    isPseudoFullscreen,
+    buttonLabel,
+  } = useVideoFullscreen(containerRef);
+
+  const usePortal = VIDEO_MOBILE_FS_USE_PORTAL && isPseudoFullscreen;
+  const [keepOverlay, setKeepOverlay] = useState(false);
+  const showOverlay = usePortal || keepOverlay;
+
+  useLayoutEffect(() => {
+    if (usePortal) setKeepOverlay(true);
+  }, [usePortal]);
+
+  useLayoutEffect(() => {
+    if (!hostEl) return;
+    if (usePortal && overlayRef.current) {
+      if (hostEl.parentElement !== overlayRef.current) {
+        overlayRef.current.appendChild(hostEl);
+      }
+    } else if (slotRef.current) {
+      if (hostEl.parentElement !== slotRef.current) {
+        slotRef.current.appendChild(hostEl);
+      }
+      if (!usePortal) setKeepOverlay(false);
+    }
+    bumpVideoLayout();
+  }, [usePortal, showOverlay, hostEl]);
+
+  useEffect(() => {
+    return () => {
+      hostEl?.remove();
+    };
+  }, [hostEl]);
+
+  const videoUi =
+    hostEl &&
+    createPortal(
+      <>
         {error ? <p style={{ color: '#fff', padding: 20 }}>{error}</p> : null}
-        {room ? <DailyRoom url={room.url} token={room.token} onLeave={onLeave} /> : (
+        {room ? (
+          <DailyRoom url={room.url} token={room.token} onLeave={onLeave} />
+        ) : (
           <p style={{ color: '#aaa', padding: 20, textAlign: 'center' }}>
             Selecciona una cita y pulsa «Unirse» para iniciar la videollamada.
           </p>
@@ -495,7 +534,44 @@ export function PerfilVideoSection({
             ⛶
           </button>
         ) : null}
-      </div>
+      </>,
+      hostEl,
+    );
+
+  return (
+    <div className="seccion-panel" id="seccion-video">
+      <header className="video-header">
+        <div>
+          <h2>Sesión en Vivo</h2>
+          <p id="info-sesion">{infoSesion}</p>
+        </div>
+        <button
+          type="button"
+          className="btn-pantalla-completa-video"
+          title="Pantalla completa"
+          onClick={toggleFullscreen}
+        >
+          {buttonLabel}
+        </button>
+      </header>
+      <div
+        ref={slotRef}
+        className="perfil-video-slot"
+        aria-hidden={usePortal || undefined}
+      />
+      {videoUi}
+      {showOverlay
+        ? createPortal(
+            <div
+              ref={overlayRef}
+              className="video-fs-portal-overlay"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Videollamada a pantalla completa"
+            />,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
