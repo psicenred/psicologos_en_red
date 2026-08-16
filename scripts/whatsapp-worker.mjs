@@ -27,9 +27,13 @@ import qrcodeTerminal from 'qrcode-terminal';
 import makeWASocket, {
   DisconnectReason,
   fetchLatestBaileysVersion,
+  fetchLatestWaWebVersion,
   useMultiFileAuthState,
 } from '@whiskeysockets/baileys';
 import pino from 'pino';
+
+/** Fallback si falla el fetch de versión (evitar 405 por WA Web viejo). */
+const WA_VERSION_FALLBACK = [2, 3000, 1045318025];
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(
@@ -163,22 +167,59 @@ function pairPage(title, bodyHtml, refreshSeconds = 0) {
 </html>`;
 }
 
+async function resolveWaVersion() {
+  try {
+    const wa = await fetchLatestWaWebVersion();
+    if (Array.isArray(wa?.version) && wa.version.length === 3) {
+      return { version: wa.version, source: 'wa-web', isLatest: Boolean(wa.isLatest) };
+    }
+  } catch (err) {
+    console.warn('[whatsapp-worker] fetchLatestWaWebVersion falló:', err.message);
+  }
+  try {
+    const b = await fetchLatestBaileysVersion();
+    if (Array.isArray(b?.version) && b.version.length === 3) {
+      return {
+        version: b.version,
+        source: 'baileys',
+        isLatest: Boolean(b.isLatest),
+      };
+    }
+  } catch (err) {
+    console.warn('[whatsapp-worker] fetchLatestBaileysVersion falló:', err.message);
+  }
+  return { version: WA_VERSION_FALLBACK, source: 'fallback', isLatest: false };
+}
+
 async function startBaileys() {
   if (starting) return;
   starting = true;
 
+  if (sock) {
+    try {
+      sock.ev?.removeAllListeners?.();
+      sock.end?.(undefined);
+    } catch {
+      /* ignore */
+    }
+    sock = null;
+  }
+
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
-  const { version, isLatest } = await fetchLatestBaileysVersion();
+  const { version, source, isLatest } = await resolveWaVersion();
   console.log(
-    `[whatsapp-worker] Baileys WA version ${version.join('.')} (latest=${isLatest})`,
+    `[whatsapp-worker] WA version ${version.join('.')} (source=${source}, latest=${isLatest})`,
   );
 
-  // Socket mínimo (como LVFW): sin markOnlineOnConnect / browser / presencia / parches.
+  // browser Mac/Chrome mitiga 405 ("client too old" / platform WEB rechazada).
   sock = makeWASocket({
     version,
     auth: state,
+    browser: ['Mac OS', 'Chrome', '20.0.04'],
     logger: pino({ level: 'silent' }),
     printQRInTerminal: false,
+    markOnlineOnConnect: false,
+    syncFullHistory: false,
   });
 
   sock.ev.on('creds.update', saveCreds);
@@ -219,11 +260,19 @@ async function startBaileys() {
         return;
       }
 
+      // 405 = WA rechaza versión/plataforma; reintentar con backoff más largo.
+      const delayMs = code === 405 ? 15000 : 3000;
+      if (code === 405) {
+        console.warn(
+          '[whatsapp-worker] 405: WhatsApp rechazó el cliente. Reintentando con versión WA Web…',
+        );
+      }
+
       setTimeout(() => {
         startBaileys().catch((err) => {
           console.error('[whatsapp-worker] Reconexión fallida:', err.message);
         });
-      }, 3000);
+      }, delayMs);
     }
   });
 }
