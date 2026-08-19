@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { getBaseUrl } from '@/lib/config';
 import { isDatabaseConfigured, query } from '@/lib/db';
 import { sendMail } from '@/lib/email';
+import { emailPie } from '@/lib/citas/email-templates';
 import {
   authMessageBox,
   normalizeEmail,
@@ -176,6 +177,7 @@ async function sendVerificationEmail(
           <a href="${enlaceVerificacion}" style="background: linear-gradient(135deg, #c9a0dc 0%, #a0c4e8 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 30px; font-size: 16px; font-weight: bold;">Verificar mi cuenta</a>
         </div>
         <p style="color: #999; font-size: 14px;">Este enlace expira en 24 horas.</p>
+        ${emailPie()}
       </div>
     `,
   });
@@ -387,6 +389,7 @@ export async function requestVerificationResend(
           <a href="${enlaceVerificacion}" style="background: linear-gradient(135deg, #c9a0dc 0%, #a0c4e8 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 30px; font-weight: bold;">Verificar mi cuenta</a>
         </div>
         <p style="color: #999; font-size: 14px;">Este enlace expira en 24 horas.</p>
+        ${emailPie()}
       </div>
     `,
     });
@@ -430,6 +433,7 @@ export async function requestPasswordReset(
           <a href="${resetLink}" style="background: linear-gradient(135deg, #c9a0dc 0%, #a0c4e8 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 30px; font-weight: bold;">Reestablecer contraseña</a>
         </div>
         <p style="color: #999; font-size: 14px;">Este enlace expira en 1 hora.</p>
+        ${emailPie()}
       </div>
     `,
     });

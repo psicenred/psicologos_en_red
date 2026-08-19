@@ -7,8 +7,38 @@ const WRAPPER =
   'font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px';
 
 export function emailPie(): string {
+  const year = new Date().getFullYear();
   return `<hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-            <p style="color: #999; font-size: 12px; text-align: center;">© ${new Date().getFullYear()} Psicólogos en Red.</p>`;
+            <table cellpadding="0" cellspacing="0" border="0" style="font-family: Arial, Helvetica, sans-serif; border-collapse: collapse; margin: 0 auto;">
+              <tr>
+                <td style="padding-right: 16px; vertical-align: top;">
+                  <a href="https://www.psicologosenred.com" target="_blank" rel="noopener noreferrer">
+                    <img src="https://www.psicologosenred.com/images/logo.png" alt="Psicólogos en Red" width="72" height="72" style="display: block; border: 0; width: 72px; height: 72px;" />
+                  </a>
+                </td>
+                <td style="border-left: 3px solid #c9a0dc; padding-left: 16px; vertical-align: top;">
+                  <p style="margin: 0 0 2px 0; font-size: 16px; font-weight: bold; color: #333333;">Psicólogos en Red</p>
+                  <p style="margin: 0 0 10px 0; font-size: 12px; color: #888888;">Terapia en línea · Ciudad de México</p>
+                  <p style="margin: 0 0 4px 0; font-size: 13px; color: #555555;">
+                    <a href="mailto:contacto@psicologosenred.com" style="color: #769db1; text-decoration: none;">contacto@psicologosenred.com</a>
+                  </p>
+                  <p style="margin: 0 0 4px 0; font-size: 13px; color: #555555;">
+                    <a href="https://wa.me/525530776194" style="color: #769db1; text-decoration: none;">+52 55 3077 6194</a>
+                  </p>
+                  <p style="margin: 0 0 10px 0; font-size: 13px;">
+                    <a href="https://www.psicologosenred.com" style="color: #c9a0dc; text-decoration: none;">www.psicologosenred.com</a>
+                  </p>
+                  <p style="margin: 0; font-size: 12px;">
+                    <a href="https://www.facebook.com/profile.php?id=100063577030818" style="color: #769db1; text-decoration: none;">Facebook</a>
+                    <span style="color: #cccccc;"> · </span>
+                    <a href="https://www.instagram.com/psicologos_en_red" style="color: #769db1; text-decoration: none;">Instagram</a>
+                    <span style="color: #cccccc;"> · </span>
+                    <a href="https://www.tiktok.com/@psicologos_en_red_" style="color: #769db1; text-decoration: none;">TikTok</a>
+                  </p>
+                </td>
+              </tr>
+            </table>
+            <p style="color: #999; font-size: 12px; text-align: center; margin-top: 20px;">© ${year} Psicólogos en Red.</p>`;
 }
 
 export function emailHeader(): string {
@@ -246,4 +276,29 @@ export function htmlRecordatorioPostCitaDia60(params: {
             <p style="color: #666; font-size: 16px;">¿Listo para tu siguiente paso? Revisa los horarios disponibles de tu especialista o descubre a nuevos profesionales aquí:</p>
             ${emailBtnPostCita(enlaceLogin)}
             <p style="color: #666; font-size: 16px;">Estamos aquí para acompañarte en la red de apoyo que mereces.</p>`);
+}
+
+/** Promo: primera sesión gratis (mismo look que recordatorios). */
+export function htmlPromoPrimeraSesionGratis(params: {
+  enlaceCatalogo: string;
+}): string {
+  const { enlaceCatalogo } = params;
+  return wrapEmail(`
+            ${emailHeader()}
+            <h2 style="color: #333;">Tu primera sesión es gratis</h2>
+            <p style="color: #666; font-size: 16px; line-height: 1.6;">Hola,</p>
+            <p style="color: #666; font-size: 16px; line-height: 1.6;">En Psicólogos en Red sabemos que dar el primer paso en terapia puede ser significativo. Es por eso que te invitamos a conocer nuestro servicio sin compromiso.</p>
+            <p style="color: #666; font-size: 16px; line-height: 1.6;"><strong>Ahora puedes agendar tu primera sesión completamente gratis.</strong></p>
+            <p style="color: #666; font-size: 16px; line-height: 1.6;">Esta es una oportunidad para:</p>
+            ${emailDetalleCita([
+              { emoji: '👋', label: 'Conocer', value: 'a nuestros profesionales' },
+              { emoji: '🔒', label: 'Conversar', value: 'en un espacio seguro y confidencial' },
+              { emoji: '🌱', label: 'Explorar', value: 'cómo la terapia puede acompañarte' },
+              { emoji: '💭', label: 'Decidir', value: 'si es el momento adecuado para ti' },
+            ])}
+            <p style="color: #666; font-size: 16px; line-height: 1.6;">Nuestro equipo está compuesto por psicólogos y psicólogas clínicas formados, que trabajan desde enfoques integradores y centrados en tus necesidades particulares. Cada sesión es diseñada para ser un espacio de confianza, respeto y acogida.</p>
+            <p style="color: #666; font-size: 16px; line-height: 1.6;">Si sientes que necesitas apoyo o simplemente quieres explorar esta posibilidad, estamos aquí para ti.</p>
+            ${emailBtn(enlaceCatalogo, 'Agenda')}
+            <p style="color: #666; font-size: 16px; line-height: 1.6;">Cualquier pregunta, puedes escribirnos sin dudas.</p>
+            <p style="color: #666; font-size: 16px; line-height: 1.6;">Atentamente,<br><strong>Psicólogos en Red</strong></p>`);
 }

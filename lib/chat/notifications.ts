@@ -1,6 +1,7 @@
 import { getBaseUrl } from '@/lib/config';
 import { query } from '@/lib/db';
 import { sendMail } from '@/lib/email';
+import { emailPie } from '@/lib/citas/email-templates';
 import { waNotificacionChat } from '@/lib/citas/whatsapp-templates';
 import { enviarWhatsapp } from '@/lib/whatsapp';
 
@@ -57,8 +58,7 @@ export async function enviarCorreoNotificacionChatSiAplica(
             <div style="text-align: center; margin: 30px 0;">
                 <a href="${enlaceLogin}" style="background: linear-gradient(135deg, #c9a0dc 0%, #a0c4e8 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 30px; font-size: 16px; font-weight: bold;">Iniciar sesión</a>
             </div>
-            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-            <p style="color: #999; font-size: 12px; text-align: center;">© ${new Date().getFullYear()} Psicólogos en Red.</p>
+            ${emailPie()}
         </div>`;
 
     if (dest.email) {
