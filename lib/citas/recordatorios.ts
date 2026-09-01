@@ -3,7 +3,7 @@ import { query } from '@/lib/db';
 import { sendMail } from '@/lib/email';
 import { enviarWhatsapp } from '@/lib/whatsapp';
 import { ZONA_HORARIA_DEFECTO } from '@/lib/citas/availability';
-import { SQL_CITA_INSTANT_C } from '@/lib/citas/cita-timing';
+import { SQL_CITA_INSTANT_C, sqlCitaInstant } from '@/lib/citas/cita-timing';
 import {
   htmlRecordatorioPostCitaDia15,
   htmlRecordatorioPostCitaDia30,
@@ -139,6 +139,12 @@ export async function ejecutarRecordatoriosPostCita(): Promise<{
         GROUP BY paciente_id
       ) u ON c.paciente_id = u.paciente_id AND c.id = u.max_id
       WHERE c.estado = 'realizada'
+        AND NOT EXISTS (
+          SELECT 1 FROM citas c2
+          WHERE c2.paciente_id = c.paciente_id
+            AND c2.estado IN ('pendiente', 'confirmada')
+            AND ${sqlCitaInstant('c2')} > NOW()
+        )
     `);
 
     for (const row of res.rows) {

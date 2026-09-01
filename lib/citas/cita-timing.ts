@@ -2,17 +2,26 @@
 export const DURACION_SESION_MS = 60 * 60 * 1000;
 export const DURACION_SESION_MINUTOS = 60;
 
-/** Zona IANA normalizada de una fila citas (alias c). */
-export const SQL_ZONA_CITA_C = `CASE
-  WHEN NULLIF(TRIM(c.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
-  ELSE COALESCE(NULLIF(TRIM(c.zona_horaria), ''), 'America/Mexico_City')
+/** Zona IANA normalizada de una fila citas (alias configurable). */
+export function sqlZonaCita(alias: string): string {
+  return `CASE
+  WHEN NULLIF(TRIM(${alias}.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
+  ELSE COALESCE(NULLIF(TRIM(${alias}.zona_horaria), ''), 'America/Mexico_City')
 END`;
+}
+
+/** Zona IANA normalizada de una fila citas (alias c). */
+export const SQL_ZONA_CITA_C = sqlZonaCita('c');
 
 /**
  * Instante timestamptz de la cita: fecha+hora en zona del psicólogo.
  * No usar fecha_hora_utc como fuente primaria (legacy Railway puede estar mal).
  */
-export const SQL_CITA_INSTANT_C = `((c.fecha + c.hora) AT TIME ZONE (${SQL_ZONA_CITA_C}))`;
+export function sqlCitaInstant(alias: string): string {
+  return `((${alias}.fecha + ${alias}.hora) AT TIME ZONE (${sqlZonaCita(alias)}))`;
+}
+
+export const SQL_CITA_INSTANT_C = sqlCitaInstant('c');
 
 export const ZONA_HORARIA_CITA_SQL = `CASE WHEN NULLIF(TRIM(p.zona_horaria), '') = 'UTC' THEN 'America/Mexico_City'
   ELSE COALESCE(NULLIF(TRIM(p.zona_horaria), ''), 'America/Mexico_City') END`;
