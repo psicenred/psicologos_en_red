@@ -5,6 +5,8 @@ import { useEffect, useRef } from 'react';
 const SCRIPT_ID = 'cf-turnstile-script';
 const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 
+type TurnstileAppearance = 'always' | 'execute' | 'interaction-only';
+
 type TurnstileApi = {
   render: (
     el: HTMLElement,
@@ -15,6 +17,8 @@ type TurnstileApi = {
       'error-callback'?: () => void;
       theme?: 'light' | 'dark' | 'auto';
       language?: string;
+      appearance?: TurnstileAppearance;
+      size?: 'normal' | 'compact' | 'flexible' | 'invisible';
     },
   ) => string;
   reset: (widgetId?: string) => void;
@@ -31,6 +35,9 @@ type Props = {
   siteKey: string;
   onToken: (token: string | null) => void;
   language?: string;
+  /** managed: interaction-only (casi invisible); invisible: size invisible */
+  appearance?: TurnstileAppearance;
+  size?: 'normal' | 'compact' | 'flexible' | 'invisible';
 };
 
 function loadTurnstileScript(): Promise<void> {
@@ -58,7 +65,13 @@ function loadTurnstileScript(): Promise<void> {
   });
 }
 
-export function TurnstileWidget({ siteKey, onToken, language = 'es' }: Props) {
+export function TurnstileWidget({
+  siteKey,
+  onToken,
+  language = 'es',
+  appearance = 'always',
+  size,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
   const onTokenRef = useRef(onToken);
@@ -81,6 +94,8 @@ export function TurnstileWidget({ siteKey, onToken, language = 'es' }: Props) {
           sitekey: siteKey,
           language,
           theme: 'light',
+          appearance,
+          ...(size ? { size } : {}),
           callback: (token) => onTokenRef.current(token),
           'expired-callback': () => onTokenRef.current(null),
           'error-callback': () => onTokenRef.current(null),
@@ -104,7 +119,7 @@ export function TurnstileWidget({ siteKey, onToken, language = 'es' }: Props) {
         widgetIdRef.current = null;
       }
     };
-  }, [siteKey, language]);
+  }, [siteKey, language, appearance, size]);
 
   return <div ref={containerRef} className="flex justify-center" />;
 }

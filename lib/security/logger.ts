@@ -2,6 +2,7 @@ export type SecurityEventType =
   | 'auth_failure'
   | 'auth_success'
   | 'rate_limit'
+  | 'honeypot'
   | 'access_denied'
   | 'webhook_error'
   | 'webhook_invalid'

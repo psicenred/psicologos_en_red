@@ -418,6 +418,9 @@
     "submit": "Send message",
     "submitting": "Sending…",
     "submitError": "There was an error sending the message. Please try again.",
+    "captchaRequired": "Please complete the security check to continue.",
+    "captchaFailed": "Security verification failed or expired. Please try again.",
+    "rateLimited": "Too many submissions. Please wait an hour and try again.",
     "successMessage": "Message sent successfully! We will respond soon."
   },
   "trabaja": {
@@ -469,6 +472,9 @@
     "submit": "Submit application",
     "submitting": "Sending…",
     "submitError": "There was an error sending your application. Please try again.",
+    "captchaRequired": "Please complete the security check to continue.",
+    "captchaFailed": "Security verification failed or expired. Please try again.",
+    "rateLimited": "Too many submissions. Please wait an hour and try again.",
     "successTitle": "Thank you for your interest!",
     "successMessage": "Thank you for your interest in working with us. We will contact you shortly.",
     "successClose": "Got it"

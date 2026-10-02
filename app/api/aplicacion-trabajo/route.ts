@@ -3,16 +3,10 @@ import { databaseUnavailableJson, parseJsonBody } from '@/lib/auth/api';
 import { isDatabaseConfigured } from '@/lib/db';
 import { sendMail } from '@/lib/email';
 import { escapeHtml, escapeHtmlBr } from '@/lib/public/forms';
-import { enforceRateLimit } from '@/lib/security/rate-limit';
+import { HONEYPOT_FIELD_NAME } from '@/lib/security/honeypot';
+import { enforcePublicFormGuard } from '@/lib/security/public-form-guard';
 
 export async function POST(request: Request) {
-  const limited = await enforceRateLimit(request, {
-    bucket: 'public:aplicacion-trabajo',
-    limit: 3,
-    windowSec: 3600,
-  });
-  if (limited) return limited;
-
   if (!isDatabaseConfigured()) return databaseUnavailableJson();
 
   const body = await parseJsonBody<{
@@ -22,15 +16,43 @@ export async function POST(request: Request) {
     pais?: string;
     razones?: string;
     experiencia?: string;
+    cf_turnstile_response?: string;
+    'cf-turnstile-response'?: string;
+    company_url?: string;
   }>(request);
 
   const { nombre, telefono, email, pais, razones, experiencia } = body;
+  const honeypot = body[HONEYPOT_FIELD_NAME] ?? body.company_url;
+  const turnstileToken =
+    (typeof body.cf_turnstile_response === 'string'
+      ? body.cf_turnstile_response
+      : null) ||
+    (typeof body['cf-turnstile-response'] === 'string'
+      ? body['cf-turnstile-response']
+      : null);
 
   if (!nombre || !telefono || !email || !pais || !razones || !experiencia) {
     return NextResponse.json(
       { error: 'Faltan campos requeridos' },
       { status: 400 },
     );
+  }
+
+  const guard = await enforcePublicFormGuard({
+    form: 'aplicacion-trabajo',
+    email,
+    honeypot,
+    turnstileToken,
+    request,
+  });
+  if (!guard.ok) {
+    if ('honeypot' in guard && guard.honeypot) {
+      return NextResponse.json({
+        success: true,
+        message: 'Solicitud recibida',
+      });
+    }
+    return guard.response;
   }
 
   try {

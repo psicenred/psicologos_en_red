@@ -1,7 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import {
+  resetTurnstileWidgets,
+  TurnstileWidget,
+} from '@/components/features/auth/TurnstileWidget';
+import { FormHoneypot } from '@/components/features/public/FormHoneypot';
+import { HONEYPOT_FIELD_NAME } from '@/lib/security/honeypot';
 
 const PAISES = [
   'México',
@@ -17,27 +23,41 @@ const PAISES = [
   'Otro',
 ] as const;
 
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || '';
+
 export function TrabajaAplicacionForm() {
   const t = useTranslations('trabaja');
+  const locale = useLocale();
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
-    setError(false);
+    setError(null);
+
+    if (TURNSTILE_SITE_KEY && !captchaToken) {
+      setError(t('captchaRequired'));
+      setLoading(false);
+      return;
+    }
 
     const formEl = e.currentTarget;
     const form = new FormData(formEl);
-    const payload = {
+    const payload: Record<string, string> = {
       nombre: String(form.get('nombre') ?? ''),
       telefono: String(form.get('telefono') ?? ''),
       email: String(form.get('email') ?? ''),
       pais: String(form.get('pais') ?? ''),
       razones: String(form.get('razones') ?? ''),
       experiencia: String(form.get('experiencia') ?? ''),
+      [HONEYPOT_FIELD_NAME]: String(form.get(HONEYPOT_FIELD_NAME) ?? ''),
     };
+    if (captchaToken) {
+      payload.cf_turnstile_response = captchaToken;
+    }
 
     try {
       const res = await fetch('/api/aplicacion-trabajo', {
@@ -46,14 +66,31 @@ export function TrabajaAplicacionForm() {
         body: JSON.stringify(payload),
       });
 
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        code?: string;
+      };
+
       if (res.ok) {
         setModalOpen(true);
         formEl.reset();
+        setCaptchaToken(null);
+        resetTurnstileWidgets();
+      } else if (res.status === 429 || data.code === 'RATE_LIMITED') {
+        setError(t('rateLimited'));
+        setCaptchaToken(null);
+        resetTurnstileWidgets();
+      } else if (data.code === 'CAPTCHA_FAILED') {
+        setError(t('captchaFailed'));
+        setCaptchaToken(null);
+        resetTurnstileWidgets();
       } else {
-        setError(true);
+        setError(t('submitError'));
+        setCaptchaToken(null);
+        resetTurnstileWidgets();
       }
     } catch {
-      setError(true);
+      setError(t('submitError'));
     } finally {
       setLoading(false);
     }
@@ -65,7 +102,8 @@ export function TrabajaAplicacionForm() {
         <h2>{t('formTitle')}</h2>
         <p className="subtitulo">{t('formSubtitle')}</p>
 
-        <form id="form-aplicacion" onSubmit={onSubmit}>
+        <form id="form-aplicacion" onSubmit={onSubmit} style={{ position: 'relative' }}>
+          <FormHoneypot />
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="nombre">{t('nameLabel')}</label>
@@ -135,13 +173,28 @@ export function TrabajaAplicacionForm() {
             />
           </div>
 
+          {TURNSTILE_SITE_KEY ? (
+            <div style={{ margin: '16px 0' }}>
+              <TurnstileWidget
+                siteKey={TURNSTILE_SITE_KEY}
+                onToken={setCaptchaToken}
+                language={locale.startsWith('en') ? 'en' : 'es'}
+                appearance="interaction-only"
+              />
+            </div>
+          ) : null}
+
           {error ? (
             <p style={{ color: '#c0392b', marginBottom: 12, fontSize: '0.9rem' }}>
-              {t('submitError')}
+              {error}
             </p>
           ) : null}
 
-          <button type="submit" className="btn-enviar-aplicacion" disabled={loading}>
+          <button
+            type="submit"
+            className="btn-enviar-aplicacion"
+            disabled={loading || (Boolean(TURNSTILE_SITE_KEY) && !captchaToken)}
+          >
             <span>{loading ? t('submitting') : t('submit')}</span>
             <span>📨</span>
           </button>

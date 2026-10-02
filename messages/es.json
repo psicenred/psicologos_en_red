@@ -418,6 +418,9 @@
     "submit": "Enviar mensaje",
     "submitting": "Enviando…",
     "submitError": "Hubo un error al enviar el mensaje. Intenta de nuevo.",
+    "captchaRequired": "Completa la verificación de seguridad para continuar.",
+    "captchaFailed": "La verificación de seguridad falló o expiró. Inténtalo de nuevo.",
+    "rateLimited": "Demasiados envíos. Espera una hora e inténtalo de nuevo.",
     "successMessage": "¡Mensaje enviado correctamente! Te responderemos pronto."
   },
   "trabaja": {
@@ -469,6 +472,9 @@
     "submit": "Enviar solicitud",
     "submitting": "Enviando…",
     "submitError": "Hubo un error al enviar tu solicitud. Intenta de nuevo.",
+    "captchaRequired": "Completa la verificación de seguridad para continuar.",
+    "captchaFailed": "La verificación de seguridad falló o expiró. Inténtalo de nuevo.",
+    "rateLimited": "Demasiados envíos. Espera una hora e inténtalo de nuevo.",
     "successTitle": "¡Gracias por tu interés!",
     "successMessage": "Muchas gracias por tu interés en trabajar con nosotros. Nosotros te contactaremos a la brevedad.",
     "successClose": "Entendido"
