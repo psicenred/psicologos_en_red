@@ -25,8 +25,8 @@ export type PublicFormGuardInput = {
 export type PublicFormGuardResult =
   | { ok: true }
   /** Honeypot: responder como éxito sin enviar correo. */
-  | { ok: false; honeypot: true }
-  | { ok: false; response: NextResponse };
+  | { ok: false; honeypot: true; response?: never }
+  | { ok: false; honeypot?: never; response: NextResponse };
 
 async function countBucket(bucketKey: string): Promise<number | null> {
   if (!isDatabaseConfigured()) return null;

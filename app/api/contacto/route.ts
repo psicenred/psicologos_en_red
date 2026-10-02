@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     request,
   });
   if (!guard.ok) {
-    if ('honeypot' in guard && guard.honeypot) {
+    if ('honeypot' in guard) {
       return NextResponse.json({
         success: true,
         message: 'Mensaje recibido',
