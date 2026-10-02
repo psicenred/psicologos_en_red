@@ -28,7 +28,8 @@ export function TrabajaAplicacionForm() {
     setLoading(true);
     setError(false);
 
-    const form = new FormData(e.currentTarget);
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
     const payload = {
       nombre: String(form.get('nombre') ?? ''),
       telefono: String(form.get('telefono') ?? ''),
@@ -47,7 +48,7 @@ export function TrabajaAplicacionForm() {
 
       if (res.ok) {
         setModalOpen(true);
-        e.currentTarget.reset();
+        formEl.reset();
       } else {
         setError(true);
       }

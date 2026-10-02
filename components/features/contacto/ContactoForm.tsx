@@ -23,7 +23,8 @@ export function ContactoForm() {
     setError(false);
     setSuccess(false);
 
-    const form = new FormData(e.currentTarget);
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
     const payload = {
       nombre: String(form.get('nombre') ?? ''),
       email: String(form.get('email') ?? ''),
@@ -41,7 +42,7 @@ export function ContactoForm() {
 
       if (res.ok) {
         setSuccess(true);
-        e.currentTarget.reset();
+        formEl.reset();
       } else {
         setError(true);
       }
