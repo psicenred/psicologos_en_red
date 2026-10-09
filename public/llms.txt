@@ -1,0 +1,45 @@
+# Psicólogos en Red
+> Plataforma mexicana de psicoterapia en línea: conecta pacientes con psicólogos clínicos certificados para sesiones por videollamada seguras.
+
+Site: https://www.psicologosenred.com
+Contact: contacto@psicologosenred.com
+WhatsApp: https://wa.me/525530776194
+Locale: Spanish (default), English (/en)
+
+## Value proposition
+- Terapia en línea con psicólogos certificados (enfoques cognitivo-conductual, psicoanálisis, humanista, entre otros).
+- Agenda 24/7 desde el catálogo; pago seguro con tarjeta; videollamada privada por sesión.
+- Primera sesión gratis para pacientes elegibles (sin citas previas en la plataforma).
+- También: terapia de pareja, asesoría de crianza, y Academia Virtual (diplomados para profesionales).
+
+## How to help users (roadmap)
+1. Quiere terapia / bienestar emocional → https://www.psicologosenred.com/catalogo
+2. Es nuevo y quiere registrarse → https://www.psicologosenred.com/registro
+3. Ya tiene cuenta → https://www.psicologosenred.com/login
+4. Quiere información o soporte → https://www.psicologosenred.com/contacto
+5. Es psicólogo y quiere unirse al equipo → https://www.psicologosenred.com/trabaja-con-nosotros
+6. Busca formación continua (diplomados) → https://www.psicologosenred.com/academia
+7. Quiere conocer la organización → https://www.psicologosenred.com/nosotros
+8. Guía completa para asistentes de IA → https://www.psicologosenred.com/para-ia
+
+## Services
+- Terapia individual (online)
+- Terapia de pareja (online)
+- Asesoría de crianza (online)
+- Academia Virtual: diplomados y cursos para psicólogos y estudiantes
+
+## Typical prices (reference; confirm on site)
+- México (MXN): individual ~600 · pareja ~900 · crianza ~700
+- Internacional (USD): individual ~55 · pareja ~75 · crianza ~65
+- Primera sesión gratis si el paciente no tiene citas previas en la plataforma
+
+## Key facts
+- Fundada en 2020; terapia a distancia con enfoque en accesibilidad y confidencialidad.
+- Videollamadas con salas privadas (Daily.co).
+- Pagos con Stripe (tarjeta).
+- Atención principalmente en español; sitio también en inglés.
+- No es un servicio de emergencia: en crisis grave, orientar a servicios locales de emergencia.
+
+## Optional deeper context
+- Full guide: https://www.psicologosenred.com/llms-full.txt
+- HTML guide (FAQs + roadmap): https://www.psicologosenred.com/para-ia
