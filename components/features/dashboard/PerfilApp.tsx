@@ -15,6 +15,7 @@ import { mensajesNoLeidosAction } from '@/lib/chat/actions';
 import { fetchApiList, networkErrorMessage } from '@/lib/fetch-api';
 import { useDailyCall } from '@/lib/hooks/useDailyCall';
 import { trackMetaEvent } from '@/lib/analytics/meta-pixel';
+import { syncAppBadge } from '@/lib/push/client';
 
 type User = {
   id: number;
@@ -58,6 +59,10 @@ export function PerfilApp() {
     refetchInterval: 15_000,
     refetchOnWindowFocus: true,
   });
+
+  useEffect(() => {
+    void syncAppBadge(unread.count);
+  }, [unread.count]);
 
   const { data: videoConfig = { activar15MinAntes: true } } = useQuery({
     queryKey: ['video-boton-15min'],

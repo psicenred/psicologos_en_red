@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DoctorShell } from '@/components/features/doctor/DoctorShell';
 import {
@@ -15,6 +15,7 @@ import { type CitaDoctor } from '@/components/features/doctor/doctor-helpers';
 import { mensajesNoLeidosAction } from '@/lib/chat/actions';
 import { fetchApiList, networkErrorMessage } from '@/lib/fetch-api';
 import { useDailyCall } from '@/lib/hooks/useDailyCall';
+import { syncAppBadge } from '@/lib/push/client';
 
 export function PanelDoctorApp() {
   const qc = useQueryClient();
@@ -60,6 +61,10 @@ export function PanelDoctorApp() {
     refetchInterval: 15_000,
     refetchOnWindowFocus: true,
   });
+
+  useEffect(() => {
+    void syncAppBadge(unread.count);
+  }, [unread.count]);
 
   const { data: videoConfig = { activar15MinAntes: true } } = useQuery({
     queryKey: ['video-boton-15min'],

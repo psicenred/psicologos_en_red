@@ -16,6 +16,8 @@ export type PushPayload = {
   title: string;
   body: string;
   url?: string;
+  /** Número para el globo del icono (Badging API). */
+  badge?: number;
 };
 
 let vapidConfigured = false;
@@ -46,6 +48,7 @@ async function sendToUsuario(
     title: payload.title,
     body: payload.body,
     url: payload.url || `${getBaseUrl()}/login`,
+    ...(typeof payload.badge === 'number' ? { badge: payload.badge } : {}),
   });
 
   let sent = 0;
@@ -78,6 +81,15 @@ async function sendToUsuario(
   return sent;
 }
 
+async function countUnreadMensajes(usuarioId: number): Promise<number> {
+  const r = await query<{ total: number }>(
+    `SELECT COUNT(*)::int AS total FROM mensajes
+     WHERE destinatario_id = $1 AND (leido IS NULL OR leido = false)`,
+    [usuarioId],
+  );
+  return r.rows[0]?.total ?? 0;
+}
+
 /** Nuevo mensaje de chat (mismo destinatario que el correo/WhatsApp). */
 export async function enviarPushNotificacionChat(
   destinatarioId: number,
@@ -85,10 +97,12 @@ export async function enviarPushNotificacionChat(
 ): Promise<void> {
   try {
     const primerNombre = (nombreRemitente || 'Alguien').trim() || 'Alguien';
+    const badge = await countUnreadMensajes(destinatarioId).catch(() => 1);
     await sendToUsuario(destinatarioId, {
       title: 'Nuevo mensaje',
       body: `${primerNombre} te escribió en Psicólogos en Red.`,
       url: `${getBaseUrl()}/login`,
+      badge: Math.max(1, badge),
     });
   } catch (e) {
     console.error('[push] chat:', (e as Error).message);

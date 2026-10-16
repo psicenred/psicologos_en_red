@@ -42,3 +42,18 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
     return null;
   }
 }
+
+/** Globo rojo en el icono de la PWA (home screen). Requiere permiso de notificaciones en iOS. */
+export async function syncAppBadge(count: number): Promise<void> {
+  if (typeof navigator === 'undefined') return;
+  const n = Math.max(0, Math.floor(Number(count) || 0));
+  try {
+    if (n > 0 && 'setAppBadge' in navigator) {
+      await navigator.setAppBadge(n);
+    } else if (n === 0 && 'clearAppBadge' in navigator) {
+      await navigator.clearAppBadge();
+    }
+  } catch {
+    // Sin permiso o plataforma sin soporte: ignorar
+  }
+}
