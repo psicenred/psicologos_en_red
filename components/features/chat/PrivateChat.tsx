@@ -57,6 +57,8 @@ export function PrivateChat({
   const [sending, setSending] = useState(false);
   const [msgError, setMsgError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const shouldFetchContactos = contactosProp == null;
 
@@ -135,6 +137,30 @@ export function PrivateChat({
     if (chatId) loadMensajes(chatId);
   }, [chatId, loadMensajes]);
 
+  const scrollToLatest = useCallback(() => {
+    const el = messagesContainerRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+      return;
+    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+  }, []);
+
+  useEffect(() => {
+    if (!chatId || mensajes.length === 0) return;
+    // Esperar al layout (móvil/escritorio); timeout por si el paint tarda un frame más.
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(scrollToLatest);
+    });
+    const t = window.setTimeout(scrollToLatest, 80);
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      window.clearTimeout(t);
+    };
+  }, [chatId, mensajes, scrollToLatest]);
+
   async function enviarTexto() {
     if (!chatId || !nuevoMsg.trim()) return;
     setSending(true);
@@ -195,25 +221,30 @@ export function PrivateChat({
     if (mensajes.length === 0) {
       return <p className="chat-welcome-msg">No hay mensajes todavía. Escribe el primero.</p>;
     }
-    return mensajes.map((m) => {
-      const esMio = miId != null && m.remitente_id === miId;
-      return (
-        <div key={m.id} className={`msg ${esMio ? 'enviado' : 'recibido'}`}>
-          {m.ruta_adjunto ? (
-            <a
-              href={`/api/chat/archivo/${m.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="msg-adjunto-pdf"
-            >
-              📎 {m.nombre_adjunto || 'PDF adjunto'}
-            </a>
-          ) : (
-            m.contenido
-          )}
-        </div>
-      );
-    });
+    return (
+      <>
+        {mensajes.map((m) => {
+          const esMio = miId != null && m.remitente_id === miId;
+          return (
+            <div key={m.id} className={`msg ${esMio ? 'enviado' : 'recibido'}`}>
+              {m.ruta_adjunto ? (
+                <a
+                  href={`/api/chat/archivo/${m.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="msg-adjunto-pdf"
+                >
+                  📎 {m.nombre_adjunto || 'PDF adjunto'}
+                </a>
+              ) : (
+                m.contenido
+              )}
+            </div>
+          );
+        })}
+        <div ref={messagesEndRef} aria-hidden="true" />
+      </>
+    );
   }
 
   if (variant === 'legacy-doctor') {
@@ -266,7 +297,7 @@ export function PrivateChat({
             ) : null}
             <h4>{activo?.nombre || 'Selecciona un paciente'}</h4>
           </div>
-          <div className="chat-messages-container">
+          <div ref={messagesContainerRef} className="chat-messages-container">
             <div className="chat-messages-inner">{renderMensajes()}</div>
           </div>
           <div className="chat-input-area">
@@ -359,7 +390,11 @@ export function PrivateChat({
               {activo?.nombre || 'Selecciona un especialista'}
             </h4>
           </div>
-          <div id="chat-messages" className="chat-messages-container">
+          <div
+            id="chat-messages"
+            ref={messagesContainerRef}
+            className="chat-messages-container"
+          >
             <div className="chat-messages-inner">{renderMensajes()}</div>
           </div>
           <div className="chat-input-area">
@@ -450,34 +485,40 @@ export function PrivateChat({
                   ← Contactos
                 </Button>
               </div>
-              <div className="flex-1 space-y-2 overflow-y-auto">
+              <div
+                ref={messagesContainerRef}
+                className="flex-1 space-y-2 overflow-y-auto"
+              >
                 {msgError ? (
                   <p className="text-sm text-destructive">{msgError}</p>
                 ) : (
-                  mensajes.map((m) => {
-                    const esMio = miId != null && m.remitente_id === miId;
-                    return (
-                      <div
-                        key={m.id}
-                        className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
-                          esMio ? 'ml-auto bg-primary text-white' : 'bg-muted'
-                        }`}
-                      >
-                        {m.ruta_adjunto ? (
-                          <a
-                            href={`/api/chat/archivo/${m.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="underline"
-                          >
-                            📎 {m.nombre_adjunto || 'PDF adjunto'}
-                          </a>
-                        ) : (
-                          m.contenido
-                        )}
-                      </div>
-                    );
-                  })
+                  <>
+                    {mensajes.map((m) => {
+                      const esMio = miId != null && m.remitente_id === miId;
+                      return (
+                        <div
+                          key={m.id}
+                          className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                            esMio ? 'ml-auto bg-primary text-white' : 'bg-muted'
+                          }`}
+                        >
+                          {m.ruta_adjunto ? (
+                            <a
+                              href={`/api/chat/archivo/${m.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline"
+                            >
+                              📎 {m.nombre_adjunto || 'PDF adjunto'}
+                            </a>
+                          ) : (
+                            m.contenido
+                          )}
+                        </div>
+                      );
+                    })}
+                    <div ref={messagesEndRef} aria-hidden="true" />
+                  </>
                 )}
               </div>
               <div className="mt-2 flex gap-2">
