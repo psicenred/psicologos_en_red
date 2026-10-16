@@ -55,6 +55,11 @@ export function DoctorShell({
             <span />
             <span />
             <span />
+            {showBadge ? (
+              <span className="nav-badge nav-badge-menu-dot" aria-hidden="true">
+                {badgeLabel}
+              </span>
+            ) : null}
           </label>
           <nav className="perfil-mobile-nav">
             <ul className="perfil-mobile-nav-list">

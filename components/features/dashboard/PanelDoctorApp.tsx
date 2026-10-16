@@ -57,7 +57,8 @@ export function PanelDoctorApp() {
       const result = await mensajesNoLeidosAction();
       return result.ok ? result.data : { count: 0 };
     },
-    refetchInterval: 30_000,
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
   });
 
   const { data: videoConfig = { activar15MinAntes: true } } = useQuery({

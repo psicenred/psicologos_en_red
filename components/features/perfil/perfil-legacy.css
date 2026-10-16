@@ -109,6 +109,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  position: relative;
 }
 
 .nav-icon {
@@ -116,6 +117,7 @@
   flex-shrink: 0;
   width: 24px;
   text-align: center;
+  position: relative;
 }
 
 .nav-item.active,
@@ -144,16 +146,56 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  line-height: 1;
+  box-shadow: 0 0 0 2px #332e2a;
 }
 
-.nav-badge-visible,
+/* Sidebar colapsado (solo iconos): badge encima del icono para que no se recorte */
+.nav-badge-visible {
+  display: inline-flex;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  margin-left: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 0.65rem;
+  z-index: 2;
+}
+
+/* Sidebar expandido al hover: badge a la derecha del texto */
+.perfil-sidebar:hover .nav-badge-visible {
+  position: static;
+  top: auto;
+  right: auto;
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 0.75rem;
+}
+
 .nav-badge-mobile {
   display: inline-flex;
-}
-
-.nav-badge-mobile {
   margin-left: 6px;
   vertical-align: middle;
+  position: static;
+}
+
+/* Indicador en el botón hamburguesa (móvil) */
+.nav-badge-menu-dot {
+  display: inline-flex;
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  margin-left: 0;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 0.6rem;
+  z-index: 3;
+  box-shadow: 0 0 0 2px var(--fondo-hueso, #f7f4ef);
 }
 
 .sidebar-footer {
@@ -1443,9 +1485,10 @@ body.video-pseudo-fullscreen #jitsi-container iframe {
     padding: 6px;
     cursor: pointer;
     z-index: 1002;
+    position: relative;
   }
 
-  .perfil-nav-toggle-label span {
+  .perfil-nav-toggle-label > span:not(.nav-badge) {
     display: block;
     height: 3px;
     background: var(--texto-oscuro);
@@ -1453,15 +1496,24 @@ body.video-pseudo-fullscreen #jitsi-container iframe {
     transition: transform 0.3s, opacity 0.3s;
   }
 
-  .perfil-mobile-header .perfil-nav-toggle:checked ~ .perfil-nav-toggle-label span:nth-child(1) {
+  .perfil-mobile-header
+    .perfil-nav-toggle:checked
+    ~ .perfil-nav-toggle-label
+    > span:not(.nav-badge):nth-child(1) {
     transform: translateY(9px) rotate(45deg);
   }
 
-  .perfil-mobile-header .perfil-nav-toggle:checked ~ .perfil-nav-toggle-label span:nth-child(2) {
+  .perfil-mobile-header
+    .perfil-nav-toggle:checked
+    ~ .perfil-nav-toggle-label
+    > span:not(.nav-badge):nth-child(2) {
     opacity: 0;
   }
 
-  .perfil-mobile-header .perfil-nav-toggle:checked ~ .perfil-nav-toggle-label span:nth-child(3) {
+  .perfil-mobile-header
+    .perfil-nav-toggle:checked
+    ~ .perfil-nav-toggle-label
+    > span:not(.nav-badge):nth-child(3) {
     transform: translateY(-9px) rotate(-45deg);
   }
 
