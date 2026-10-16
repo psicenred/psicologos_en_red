@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { PushNotificationsCard } from '@/components/features/push/PushNotificationsCard';
 import { nombreDia } from './doctor-helpers';
 
 const DIAS_OPCIONES = [
@@ -447,6 +448,8 @@ export function DoctorAgendaSection() {
             ) : null}
           </form>
         </div>
+
+        <PushNotificationsCard />
       </div>
     </div>
   );

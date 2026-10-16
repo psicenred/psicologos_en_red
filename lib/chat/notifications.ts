@@ -3,6 +3,7 @@ import { query } from '@/lib/db';
 import { sendMail } from '@/lib/email';
 import { emailPie } from '@/lib/citas/email-templates';
 import { waNotificacionChat } from '@/lib/citas/whatsapp-templates';
+import { enviarPushNotificacionChat } from '@/lib/push/send';
 import { enviarWhatsapp } from '@/lib/whatsapp';
 
 const CHAT_NOTIF_EMAIL_INTERVAL_MINUTES = 60;
@@ -81,6 +82,8 @@ export async function enviarCorreoNotificacionChatSiAplica(
         enlaceLogin,
       }),
     );
+
+    void enviarPushNotificacionChat(destinatarioId, nombreRemitente);
 
     await query(
       `INSERT INTO chat_notificacion_email (destinatario_id, remitente_id, enviado_at) VALUES ($1, $2, NOW())

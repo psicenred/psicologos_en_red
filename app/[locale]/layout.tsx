@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { MetaPixel } from '@/components/analytics/MetaPixel';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import { RediWidget } from '@/components/features/chat/RediWidget';
+import { PwaRegister } from '@/components/features/push/PwaRegister';
 import { routing, type Locale } from '@/i18n/routing';
 
 type Props = {
@@ -31,6 +32,7 @@ export default async function LocaleLayout({ children, params }: Props) {
         <NextIntlClientProvider messages={messages}>
           <QueryProvider>
             {children}
+            <PwaRegister />
             <RediWidget />
             <Suspense fallback={null}>
               <MetaPixel />

@@ -14,6 +14,7 @@ import { ReagendarDialog } from '@/components/features/citas/ReagendarDialog';
 import { formatEtiquetaSesion } from '@/lib/booking/format-servicio';
 import { PerfilAgendarDialog } from '@/components/features/perfil/PerfilAgendarDialog';
 import { ReferralSharePanel } from '@/components/features/perfil/ReferralSharePanel';
+import { PushNotificationsCard } from '@/components/features/push/PushNotificationsCard';
 import {
   type CitaPaciente,
   estadoClass,
@@ -765,6 +766,8 @@ export function PerfilConfigSection({
             ) : null}
           </form>
         </div>
+
+        <PushNotificationsCard />
       </div>
     </div>
   );
