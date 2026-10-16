@@ -8,11 +8,42 @@ import { enviarWhatsapp } from '@/lib/whatsapp';
 
 const CHAT_NOTIF_EMAIL_INTERVAL_MINUTES = 60;
 
+async function nombreRemitenteChat(remitenteId: number): Promise<string> {
+  const remRow = await query(
+    `SELECT u.nombre AS usuario_nombre, p.nombre AS psicologo_nombre
+     FROM usuarios u LEFT JOIN psicologos p ON p.usuario_id = u.id WHERE u.id = $1`,
+    [remitenteId],
+  );
+  const rem = remRow.rows[0] as
+    | { usuario_nombre?: string; psicologo_nombre?: string }
+    | undefined;
+  return (rem?.psicologo_nombre || rem?.usuario_nombre || 'Alguien').trim();
+}
+
+/**
+ * Notifica un mensaje nuevo:
+ * - Push: siempre (cada mensaje).
+ * - Correo + WhatsApp: como máximo 1 por hora por par remitente→destinatario.
+ */
 export async function enviarCorreoNotificacionChatSiAplica(
   destinatarioId: number,
   remitenteId: number,
 ): Promise<void> {
   if (!destinatarioId || !remitenteId) return;
+
+  let nombreRemitente = 'Alguien';
+  try {
+    nombreRemitente = await nombreRemitenteChat(remitenteId);
+  } catch (e) {
+    console.error(
+      'Error obteniendo nombre remitente chat:',
+      (e as Error).message,
+    );
+  }
+
+  // Push en cada mensaje (independiente del throttle de correo).
+  void enviarPushNotificacionChat(destinatarioId, nombreRemitente);
+
   try {
     const r = await query(
       `SELECT enviado_at FROM chat_notificacion_email WHERE destinatario_id = $1 AND remitente_id = $2`,
@@ -25,28 +56,15 @@ export async function enviarCorreoNotificacionChatSiAplica(
       if (mins < CHAT_NOTIF_EMAIL_INTERVAL_MINUTES) return;
     }
 
-    const [destRow, remRow] = await Promise.all([
-      query('SELECT nombre, email, telefono FROM usuarios WHERE id = $1', [
-        destinatarioId,
-      ]),
-      query(
-        `SELECT u.nombre AS usuario_nombre, p.nombre AS psicologo_nombre
-         FROM usuarios u LEFT JOIN psicologos p ON p.usuario_id = u.id WHERE u.id = $1`,
-        [remitenteId],
-      ),
-    ]);
+    const destRow = await query(
+      'SELECT nombre, email, telefono FROM usuarios WHERE id = $1',
+      [destinatarioId],
+    );
     const dest = destRow.rows[0] as
       | { nombre?: string; email?: string; telefono?: string }
       | undefined;
-    const rem = remRow.rows[0] as
-      | { usuario_nombre?: string; psicologo_nombre?: string }
-      | undefined;
     if (!dest?.email && !dest?.telefono) return;
-    const nombreRemitente = (
-      rem?.psicologo_nombre ||
-      rem?.usuario_nombre ||
-      'Alguien'
-    ).trim();
+
     const primerNombre = (dest.nombre || '').split(' ')[0] || 'hola';
     const enlaceLogin = getBaseUrl() + '/login';
 
@@ -82,8 +100,6 @@ export async function enviarCorreoNotificacionChatSiAplica(
         enlaceLogin,
       }),
     );
-
-    void enviarPushNotificacionChat(destinatarioId, nombreRemitente);
 
     await query(
       `INSERT INTO chat_notificacion_email (destinatario_id, remitente_id, enviado_at) VALUES ($1, $2, NOW())
