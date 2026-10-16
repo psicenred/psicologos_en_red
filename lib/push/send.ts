@@ -95,6 +95,63 @@ export async function enviarPushNotificacionChat(
   }
 }
 
+async function getPsicologoUsuarioId(
+  psicologoId: number,
+): Promise<number | null> {
+  const psiRow = await query<{ usuario_id: number | null }>(
+    'SELECT usuario_id FROM psicologos WHERE id = $1 LIMIT 1',
+    [psicologoId],
+  );
+  return psiRow.rows[0]?.usuario_id ?? null;
+}
+
+function detalleCitaTexto(fechaStr?: string, horaStr?: string): string {
+  const f = (fechaStr || '').trim();
+  const h = (horaStr || '').trim();
+  if (f && h) return `${f} a las ${h}`;
+  if (f) return f;
+  if (h) return h;
+  return '';
+}
+
+/** Cita recién agendada: paciente y psicólogo. */
+export async function enviarPushCitaAgendada(params: {
+  pacienteUsuarioId: number;
+  psicologoId: number;
+  psicologoNombre?: string;
+  pacienteNombre?: string;
+  fechaStr?: string;
+  horaStr?: string;
+}): Promise<void> {
+  try {
+    const psiUsuarioId = await getPsicologoUsuarioId(params.psicologoId);
+    const psiNombre = (params.psicologoNombre || 'tu psicólogo').trim();
+    const pacNombre = (params.pacienteNombre || 'un paciente').trim();
+    const cuando = detalleCitaTexto(params.fechaStr, params.horaStr);
+    const loginUrl = `${getBaseUrl()}/login`;
+
+    await sendToUsuario(params.pacienteUsuarioId, {
+      title: 'Cita agendada',
+      body: cuando
+        ? `Tu sesión con ${psiNombre} quedó el ${cuando}.`
+        : `Tu sesión con ${psiNombre} quedó agendada.`,
+      url: loginUrl,
+    });
+
+    if (psiUsuarioId) {
+      await sendToUsuario(psiUsuarioId, {
+        title: 'Nueva cita agendada',
+        body: cuando
+          ? `${pacNombre} agendó el ${cuando}.`
+          : `${pacNombre} agendó una sesión contigo.`,
+        url: loginUrl,
+      });
+    }
+  } catch (e) {
+    console.error('[push] cita agendada:', (e as Error).message);
+  }
+}
+
 /** Recordatorio ~30 min antes: paciente (usuario_id) y psicólogo (usuario_id). */
 export async function enviarPushRecordatorioCita(params: {
   pacienteUsuarioId: number;
@@ -103,11 +160,7 @@ export async function enviarPushRecordatorioCita(params: {
   pacienteNombre?: string;
 }): Promise<void> {
   try {
-    const psiRow = await query<{ usuario_id: number | null }>(
-      'SELECT usuario_id FROM psicologos WHERE id = $1 LIMIT 1',
-      [params.psicologoId],
-    );
-    const psicologoUsuarioId = psiRow.rows[0]?.usuario_id ?? null;
+    const psicologoUsuarioId = await getPsicologoUsuarioId(params.psicologoId);
     const psiNombre = (params.psicologoNombre || 'tu psicólogo').trim();
     const pacNombre = (params.pacienteNombre || 'tu paciente').trim();
     const loginUrl = `${getBaseUrl()}/login`;

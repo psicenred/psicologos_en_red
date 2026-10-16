@@ -31,6 +31,7 @@ npx web-push generate-vapid-keys
 ## Eventos que disparan push
 
 - Nuevo mensaje de chat (mismo flujo que correo/WhatsApp).
+- Cita agendada (paciente y psicólogo).
 - Recordatorio de cita ~30 min antes (cron existente).
 
 ## Archivos clave

@@ -1,6 +1,9 @@
 import { getBaseUrl } from '@/lib/config';
 import { sendMail } from '@/lib/email';
-import { enviarPushRecordatorioCita } from '@/lib/push/send';
+import {
+  enviarPushCitaAgendada,
+  enviarPushRecordatorioCita,
+} from '@/lib/push/send';
 import { enviarWhatsapp } from '@/lib/whatsapp';
 import {
   htmlCitaAgendadaPaciente,
@@ -160,6 +163,15 @@ export async function enviarCorreosCitaAgendada(
       enlaceLogin,
     }),
   );
+
+  void enviarPushCitaAgendada({
+    pacienteUsuarioId: pacienteId,
+    psicologoId,
+    psicologoNombre,
+    pacienteNombre,
+    fechaStr: detPaciente.fechaStr,
+    horaStr: detPaciente.horaStr,
+  });
 }
 
 export async function enviarCorreosCitaReagendada(
